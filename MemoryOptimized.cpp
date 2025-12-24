@@ -10,7 +10,6 @@ using namespace std;
 uint8_t heap[HEAP_SIZE];
 
 enum class Type { Int, Double };
-
 enum class VariablePropery {
     capacity = 1,
     size = 2,
@@ -19,15 +18,27 @@ enum class VariablePropery {
     id = 5
 };
 
+int malloc(int);
+uint8_t* GetVectorCountAddress();
+uint8_t* GetVectorMetadataAddress(int, VariablePropery);
+int GetVectorPlaceByID(uint8_t);
+uint8_t DefineVector(Type);
+void DeleteVector(uint8_t);
+
+int main() {}
+
 // Metadata starts from end. Last byte is number of vars. Next five bytes are:
 // capacity, size, type, start index, id
 int malloc(int neededByteCount) {
-    int varCount = heap[HEAP_SIZE - 1], counter = 0;
-    for (int i = 0; i < HEAP_SIZE - 1 - varCount * VAR_METADATA_SIZE; i++) {
+    uint8_t vectorCount = *GetVectorCountAddress();
+    int counter = 0;
+    for (int i = 0; i < HEAP_SIZE - 1 - vectorCount * VAR_METADATA_SIZE; i++) {
         if (counter == neededByteCount) return i - neededByteCount;
-        for (int j = 0; j < varCount; j++) {
-            int currVarStart = *GetMetadata(j, VariablePropery::startIndex);
-            int currVarCapacity = *GetMetadata(j, VariablePropery::capacity);
+        for (int j = 0; j < vectorCount; j++) {
+            int currVarStart =
+                *GetVectorMetadataAddress(j, VariablePropery::startIndex);
+            int currVarCapacity =
+                *GetVectorMetadataAddress(j, VariablePropery::capacity);
             if (i >= currVarStart) {
                 counter = 0;
                 // Minus one becase after continue i gets automatically
@@ -43,35 +54,56 @@ int malloc(int neededByteCount) {
     return -1;
 }
 
-uint8_t* GetMetadata(int variableNumber, VariablePropery property) {
-    return &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
-                (variableNumber * VAR_METADATA_SIZE) -
-                (VAR_METADATA_SIZE - (int)property)];
-}
-// TODO: Get init values
-int DefineVector(Type t) {
-    uint8_t* varCount = &heap[HEAP_SIZE - 1];
-    bool varID[*varCount]={0}, id=-1;
+uint8_t* GetVectorCountAddress() { return &heap[HEAP_SIZE - 1]; }
 
-    for(int i=0; i<*varCount; i++) {
-        if(*GetMetadata(i, VariablePropery::id)<*varCount)
-            varID[*GetMetadata(i, VariablePropery::id)]=true;
+uint8_t* GetVectorMetadataAddress(int variablePlace, VariablePropery property) {
+    return &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
+                 (variablePlace * VAR_METADATA_SIZE) -
+                 (VAR_METADATA_SIZE - (int)property)];
+}
+
+int GetVectorPlaceByID(uint8_t id) {
+    for (int i = 0; i < *GetVectorCountAddress(); i++) {
+        if (*GetVectorMetadataAddress(i, VariablePropery::id) == id) return i;
     }
-    for(int i=0; i<*varCount; i++)
-        if(!varID[i])
-            id=i;
+    return -1;
+}
+
+// TODO: Get init values
+uint8_t DefineVector(Type t) {
+    uint8_t *vectorCount = GetVectorCountAddress(), id = -1;
+    bool varID[*vectorCount] = {0};
+
+    for (int i = 0; i < *vectorCount; i++) {
+        if (*GetVectorMetadataAddress(i, VariablePropery::id) < *vectorCount)
+            varID[*GetVectorMetadataAddress(i, VariablePropery::id)] = true;
+    }
+    for (int i = 0; i < *vectorCount; i++)
+        if (!varID[i]) id = i;
 
     // Create variable
-    *varCount++;
+    *vectorCount++;
     // Start index
-    *GetMetadata(id, VariablePropery::startIndex) = -1;
+    *GetVectorMetadataAddress(*vectorCount, VariablePropery::startIndex) = -1;
     // Type
-    *GetMetadata(id, VariablePropery::type) = (int)(t);
+    *GetVectorMetadataAddress(*vectorCount, VariablePropery::type) = (int)(t);
     // Size
-    *GetMetadata(id, VariablePropery::size) = 0;
+    *GetVectorMetadataAddress(*vectorCount, VariablePropery::size) = 0;
     // Capacity
-    *GetMetadata(id, VariablePropery::capacity) = 0;
+    *GetVectorMetadataAddress(*vectorCount, VariablePropery::capacity) = 0;
+    // ID
+    *GetVectorMetadataAddress(*vectorCount, VariablePropery::id) = id;
     return id;
 }
 
-int main() {}
+void DeleteVector(uint8_t id) {
+    int place = GetVectorPlaceByID(id);
+    if (place == -1) return;
+    for (int i = place; i < *GetVectorCountAddress() - 1; i++) {
+        *GetVectorMetadataAddress(i, VariablePropery::capacity)=*GetVectorMetadataAddress(i+1, VariablePropery::capacity);
+        *GetVectorMetadataAddress(i, VariablePropery::id)=*GetVectorMetadataAddress(i+1, VariablePropery::id);
+        *GetVectorMetadataAddress(i, VariablePropery::size)=*GetVectorMetadataAddress(i+1, VariablePropery::size);
+        *GetVectorMetadataAddress(i, VariablePropery::startIndex)=*GetVectorMetadataAddress(i+1, VariablePropery::startIndex);
+        *GetVectorMetadataAddress(i, VariablePropery::type)=*GetVectorMetadataAddress(i+1, VariablePropery::type);
+    }
+}
