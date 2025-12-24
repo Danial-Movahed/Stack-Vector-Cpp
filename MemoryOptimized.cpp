@@ -26,8 +26,8 @@ int malloc(int neededByteCount) {
     for (int i = 0; i < HEAP_SIZE - 1 - varCount * VAR_METADATA_SIZE; i++) {
         if (counter == neededByteCount) return i - neededByteCount;
         for (int j = 0; j < varCount; j++) {
-            int currVarStart = GetMetadata(j, VariablePropery::startIndex);
-            int currVarCapacity = GetMetadata(j, VariablePropery::capacity);
+            int currVarStart = *GetMetadata(j, VariablePropery::startIndex);
+            int currVarCapacity = *GetMetadata(j, VariablePropery::capacity);
             if (i >= currVarStart) {
                 counter = 0;
                 // Minus one becase after continue i gets automatically
@@ -43,8 +43,8 @@ int malloc(int neededByteCount) {
     return -1;
 }
 
-int GetMetadata(int variableNumber, VariablePropery property) {
-    return heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
+uint8_t* GetMetadata(int variableNumber, VariablePropery property) {
+    return &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
                 (variableNumber * VAR_METADATA_SIZE) -
                 (VAR_METADATA_SIZE - (int)property)];
 }
@@ -54,8 +54,8 @@ int DefineVector(Type t) {
     bool varID[*varCount]={0}, id=-1;
 
     for(int i=0; i<*varCount; i++) {
-        if(GetMetadata(i, VariablePropery::id)<*varCount)
-            varID[GetMetadata(i, VariablePropery::id)]=true;
+        if(*GetMetadata(i, VariablePropery::id)<*varCount)
+            varID[*GetMetadata(i, VariablePropery::id)]=true;
     }
     for(int i=0; i<*varCount; i++)
         if(!varID[i])
@@ -64,17 +64,13 @@ int DefineVector(Type t) {
     // Create variable
     *varCount++;
     // Start index
-    heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE - (VAR_METADATA_SIZE - 4) -
-         (id)*VAR_METADATA_SIZE] = -1;
+    *GetMetadata(id, VariablePropery::startIndex) = -1;
     // Type
-    heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE - (VAR_METADATA_SIZE - 3) -
-         (id)*VAR_METADATA_SIZE] = (int)(t);
+    *GetMetadata(id, VariablePropery::type) = (int)(t);
     // Size
-    heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE - (VAR_METADATA_SIZE - 2) -
-         (id)*VAR_METADATA_SIZE] = 0;
+    *GetMetadata(id, VariablePropery::size) = 0;
     // Capacity
-    heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE - (VAR_METADATA_SIZE - 1) -
-         (id)*VAR_METADATA_SIZE] = 0;
+    *GetMetadata(id, VariablePropery::capacity) = 0;
     return id;
 }
 
