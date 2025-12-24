@@ -38,7 +38,7 @@ int malloc(int neededByteCount) {
 }
 //TODO: Get init values
 int DefineVector(type t) {
-    const int varCount = ++heap[HEAP_SIZE];
+    const int varCount = ++heap[HEAP_SIZE-1];
     // ID
     // heap[HEAP_SIZE-1-1-(VAR_METADATA_SIZE-4)-varCount*VAR_METADATA_SIZE] = -1;
     // Start index
