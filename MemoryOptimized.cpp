@@ -5,24 +5,30 @@ using namespace std;
 
 // #define HEAP_SIZE 1000000
 #define HEAP_SIZE 1000
-#define VAR_METADATA_SIZE 11
+#define VAR_METADATA_SIZE 14
 #define STATIC_METADATA_SIZE 1
-#define VECTOR_COUNT_ADDR HEAP_SIZE-1
+#define VECTOR_COUNT_ADDR HEAP_SIZE - 1
 
 uint8_t heap[HEAP_SIZE];
 
-enum class Type { Int = 1, Double };
+enum class Type { Int = 1, Double = 2 };
 enum class VariablePropery {
-    capacity = 1,
-    size = 4,
-    type = 7,
-    startIndex = 8,
-    id = 11
+    id = 0,  // Incremented 4 times because capacity, size and startIndex
+             // are 32bit integers.
+    type = 1,
+    capacity = 5,
+    size = 9,
+    startIndex = 13,
 };
 
 int malloc(int);
 uint8_t* GetVectorMetadataAddress(int, VariablePropery);
 int GetVectorPlaceByID(uint8_t);
+int GetMultiMetadataValue(uint8_t, VariablePropery);
+uint8_t GetSingleMetadataValue(uint8_t, VariablePropery);
+void SetMetadataValue(uint8_t, VariablePropery, int);
+void SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
+void SetMetadataValueMulti(uint8_t, VariablePropery, int);
 int DefineVector(Type);
 void DeleteVector(uint8_t);
 void VectorPushBack(uint8_t id, int value);
@@ -35,6 +41,54 @@ int main() {
     DeleteVector(intVector);
 }
 
+uint8_t* GetVectorMetadataAddress(int variablePlace, VariablePropery property) {
+    uint8_t* addr = &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
+                 (variablePlace * VAR_METADATA_SIZE) - ((int)property)];
+    return addr;
+}
+
+int GetMultiMetadataValue(uint8_t variablePlace, VariablePropery property) {
+    return ((GetVectorMetadataAddress(variablePlace, property)[0] << 24) +
+            (GetVectorMetadataAddress(variablePlace, property)[1] << 16) +
+            (GetVectorMetadataAddress(variablePlace, property)[2] << 8) +
+            (GetVectorMetadataAddress(variablePlace, property)[3] << 0)
+           );
+}
+
+uint8_t GetSingleMetadataValue(uint8_t variablePlace, VariablePropery property) {
+    return (*GetVectorMetadataAddress(variablePlace, property));
+}
+
+void SetMetadataValueMulti(uint8_t variablePlace, VariablePropery property, int value) {
+    // cout << ((value & 0xff000000) >> 24) << "\n";
+    // cout << ((value & 0x00ff0000) >> 16) << "\n";
+    // cout << ((value & 0x0000ff00) >> 8) << "\n";
+    // cout << ((value & 0x000000ff) >> 0) << "\n###########\n";
+    GetVectorMetadataAddress(variablePlace, property)[0] = (value & 0xff000000) >> 24;
+    GetVectorMetadataAddress(variablePlace, property)[1] = (value & 0x00ff0000) >> 16;
+    GetVectorMetadataAddress(variablePlace, property)[2] = (value & 0x0000ff00) >> 8;
+    GetVectorMetadataAddress(variablePlace, property)[3] = (value & 0x000000ff) >> 0;
+}
+
+void SetMetadataValueSingle(uint8_t variablePlace, VariablePropery property, uint8_t value) {
+    *GetVectorMetadataAddress(variablePlace, property) = value;
+}
+
+void SetMetadataValue(uint8_t variablePlace, VariablePropery property, int value) {
+    switch (property) {
+        case VariablePropery::capacity:
+        case VariablePropery::startIndex:
+        case VariablePropery::size:
+            SetMetadataValueMulti(variablePlace, property, value);
+            break;
+        case VariablePropery::id:
+        case VariablePropery::type:
+            SetMetadataValueSingle(variablePlace, property, value);
+        default:
+            break;
+    }
+}
+
 // Metadata starts from end. Last byte is number of vars. Next five bytes are:
 // capacity, size, type, start index, id
 int malloc(int neededByteCount) {
@@ -44,18 +98,10 @@ int malloc(int neededByteCount) {
         if (counter == neededByteCount) return i - neededByteCount;
         for (int j = 0; j < vectorCount; j++) {
             int currVarStart =
-                GetVectorMetadataAddress(j, VariablePropery::startIndex)[0]
-                << 16 + GetVectorMetadataAddress(j,
-                                                 VariablePropery::startIndex)[1]
-                << 8 + GetVectorMetadataAddress(j,
-                                                VariablePropery::startIndex)[2]
-                << 0;
+                GetMultiMetadataValue(j, VariablePropery::startIndex);
             int currVarCapacity =
-                GetVectorMetadataAddress(j, VariablePropery::capacity)[0]
-                << 16 +
-                       GetVectorMetadataAddress(j, VariablePropery::capacity)[1]
-                << 8 + GetVectorMetadataAddress(j, VariablePropery::capacity)[2]
-                << 0;
+                GetMultiMetadataValue(j, VariablePropery::capacity);
+
             if (i >= currVarStart) {
                 counter = 0;
                 // Minus one becase after continue i gets automatically
@@ -71,15 +117,9 @@ int malloc(int neededByteCount) {
     return -1;
 }
 
-uint8_t* GetVectorMetadataAddress(int variablePlace, VariablePropery property) {
-    return &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
-                 (variablePlace * VAR_METADATA_SIZE) -
-                 (VAR_METADATA_SIZE - (int)property)];
-}
-
 int GetVectorPlaceByID(uint8_t id) {
     for (int i = 0; i < heap[VECTOR_COUNT_ADDR]; i++) {
-        if (*GetVectorMetadataAddress(i, VariablePropery::id) == id) return i;
+        if (GetSingleMetadataValue(i, VariablePropery::id) == id) return i;
     }
     return -1;
 }
@@ -91,33 +131,28 @@ int DefineVector(Type t) {
         return -1;
     }
     int id = -1;
-    bool varID[heap[VECTOR_COUNT_ADDR]] = {0};
+    bool varID[heap[VECTOR_COUNT_ADDR]];
 
     for (int i = 0; i < heap[VECTOR_COUNT_ADDR]; i++) {
-        if (*GetVectorMetadataAddress(i, VariablePropery::id) < heap[VECTOR_COUNT_ADDR])
-            varID[*GetVectorMetadataAddress(i, VariablePropery::id)] = true;
+        uint8_t currentId = GetSingleMetadataValue(i, VariablePropery::id);
+        if (currentId < heap[VECTOR_COUNT_ADDR]) varID[currentId] = true;
     }
     for (int i = 0; i < heap[VECTOR_COUNT_ADDR]; i++)
         if (!varID[i]) id = i;
-    if (id == -1) id = heap[VECTOR_COUNT_ADDR];
-
+    if (id == -1) {
+        id = heap[VECTOR_COUNT_ADDR];
+    }
     // Create variable
     // Start index
-    // *GetVectorMetadataAddress(*vectorCount, VariablePropery::startIndex) =
-    // -1; Type
-    *GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::type) = (int)(t);
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::startIndex, -1);
+    // Type
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::type, (int)(t));
     // Size
-    GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::size)[0] =
-        GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::size)[1] =
-            GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::size)[2] =
-                2;
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::size, 0);
     // Capacity
-    GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::capacity)[0] =
-        GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::capacity)[1] =
-            GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR],
-                                     VariablePropery::capacity)[2] = 10;
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::capacity, 0);
     // ID
-    *GetVectorMetadataAddress(heap[VECTOR_COUNT_ADDR], VariablePropery::id) = id;
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::id, id);
     heap[VECTOR_COUNT_ADDR]++;
     return id;
 }
@@ -126,37 +161,30 @@ void DeleteVector(uint8_t id) {
     int place = GetVectorPlaceByID(id);
     if (place == -1) return;
     for (int i = place; i < heap[VECTOR_COUNT_ADDR] - 1; i++) {
-        // Capacity
-        GetVectorMetadataAddress(i, VariablePropery::capacity)[0] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::capacity)[0];
-        GetVectorMetadataAddress(i, VariablePropery::capacity)[1] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::capacity)[1];
-        GetVectorMetadataAddress(i, VariablePropery::capacity)[2] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::capacity)[2];
+        // I know for multibyte metadatas manually assigning is faster but this
+        // way is more readable and cleaner. Capacity        
+        SetMetadataValue(
+            i, VariablePropery::capacity,
+            GetMultiMetadataValue(i + 1, VariablePropery::capacity));
         // // ID
-        *GetVectorMetadataAddress(i, VariablePropery::id) =
-            *GetVectorMetadataAddress(i + 1, VariablePropery::id);
+        SetMetadataValue(i, VariablePropery::id,
+                         GetSingleMetadataValue(i + 1, VariablePropery::id));
         // // Size
-        GetVectorMetadataAddress(i, VariablePropery::size)[0] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::size)[0];
-        GetVectorMetadataAddress(i, VariablePropery::size)[1] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::size)[1];
-        GetVectorMetadataAddress(i, VariablePropery::size)[2] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::size)[2];
+        SetMetadataValue(i, VariablePropery::size,
+                         GetMultiMetadataValue(i + 1, VariablePropery::size));
         // // Start index
-        GetVectorMetadataAddress(i, VariablePropery::startIndex)[0] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::startIndex)[0];
-        GetVectorMetadataAddress(i, VariablePropery::startIndex)[1] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::startIndex)[1];
-        GetVectorMetadataAddress(i, VariablePropery::startIndex)[2] =
-            GetVectorMetadataAddress(i + 1, VariablePropery::startIndex)[2];
+        SetMetadataValue(
+            i, VariablePropery::startIndex,
+            GetMultiMetadataValue(i + 1, VariablePropery::startIndex));
         // // Type
-        *GetVectorMetadataAddress(i, VariablePropery::type) =
-            *GetVectorMetadataAddress(i + 1, VariablePropery::type);
+        SetMetadataValue(i, VariablePropery::type,
+                         GetSingleMetadataValue(i + 1, VariablePropery::type));
     }
     heap[VECTOR_COUNT_ADDR]--;
 }
 
-void VectorPushBack(uint8_t id, int value) {}
+void VectorPushBack(uint8_t id, int value) {
+    
+}
 
 void VectorPushBack(uint8_t id, double value) {}
