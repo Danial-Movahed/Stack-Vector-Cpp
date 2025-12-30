@@ -16,7 +16,7 @@ enum type {
 // Metadata starts from end. Last byte is number of vars. Next five bytes are: capacity, size, type, start index, id
 // For ID we could also use last byte as a bitmask for available vars then use the index of bit that is 1 in it and when var is deleted set that bit as 0
 // TODO: More time efficient!
-int malloc(int neededByteCount) {
+int myMalloc(int neededByteCount) {
     int varCount = heap[HEAP_SIZE-1], counter=0;
     for(int i=0; i<HEAP_SIZE-1-varCount*VAR_METADATA_SIZE; i++) {
         if(counter == neededByteCount)

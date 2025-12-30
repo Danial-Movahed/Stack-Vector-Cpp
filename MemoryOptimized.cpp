@@ -11,7 +11,7 @@ using namespace std;
 
 uint8_t heap[HEAP_SIZE];
 
-enum class Type { Int = 1, Double = 2 };
+enum class Type { Int = sizeof(int), Double = sizeof(double) };
 enum class VariablePropery {
     id = 0,  // Incremented 4 times because capacity, size and startIndex
              // are 32bit integers.
@@ -21,91 +21,92 @@ enum class VariablePropery {
     startIndex = 13,
 };
 
-int malloc(int);
-uint8_t* GetVectorMetadataAddress(int, VariablePropery);
-int GetVectorPlaceByID(uint8_t);
+int myMalloc(int, int16_t = -1);
+void SetMultiValue(double, int);
+void SetMultiValue(int, int);
+// First I made these functions return pointer but I thought that because our heap is defined as an array then address
+// of each value will become its index so it makes more sense to use index instead of pointers.
+// So derefrencing becomes returning heap[index]
+int GetVectorMetadataIndex(uint8_t, VariablePropery);
+uint8_t GetVectorPlace(uint8_t);
 int GetMultiMetadataValue(uint8_t, VariablePropery);
 uint8_t GetSingleMetadataValue(uint8_t, VariablePropery);
 void SetMetadataValue(uint8_t, VariablePropery, int);
 void SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
-void SetMetadataValueMulti(uint8_t, VariablePropery, int);
 int DefineVector(Type);
 void DeleteVector(uint8_t);
+void myMemcpy(int, int, int);
 void VectorPushBack(uint8_t id, int value);
 void VectorPushBack(uint8_t id, double value);
 
 int main() {
     uint8_t intVector = DefineVector(Type::Int);
-    uint8_t doubleVector = DefineVector(Type::Double);
-    uint8_t int2Vector = DefineVector(Type::Int);
-    DeleteVector(intVector);
+    // uint8_t doubleVector = DefineVector(Type::Double);
+    // uint8_t int2Vector = DefineVector(Type::Int);
+    // DeleteVector(intVector);
+    VectorPushBack(intVector, 12);
+    VectorPushBack(intVector, 2);
+    VectorPushBack(intVector, 15);
+    VectorPushBack(intVector, 100);
+    VectorPushBack(intVector, 9);
+    VectorPushBack(intVector, 3);
+    VectorPushBack(intVector, 1);
+    return 0;
 }
 
-uint8_t* GetVectorMetadataAddress(int variablePlace, VariablePropery property) {
-    uint8_t* addr = &heap[HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
-                 (variablePlace * VAR_METADATA_SIZE) - ((int)property)];
-    return addr;
+int GetVectorMetadataIndex(uint8_t vectorPlace, VariablePropery property) {
+    return (HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
+                          (vectorPlace * VAR_METADATA_SIZE) - ((int)property));
 }
 
-int GetMultiMetadataValue(uint8_t variablePlace, VariablePropery property) {
-    return ((GetVectorMetadataAddress(variablePlace, property)[0] << 24) +
-            (GetVectorMetadataAddress(variablePlace, property)[1] << 16) +
-            (GetVectorMetadataAddress(variablePlace, property)[2] << 8) +
-            (GetVectorMetadataAddress(variablePlace, property)[3] << 0)
-           );
+int GetMultiMetadataValue(uint8_t vectorPlace, VariablePropery property) {
+    int metadataIndex = GetVectorMetadataIndex(vectorPlace, property);
+    return ((heap[metadataIndex+3] << 24) +
+            (heap[metadataIndex+2] << 16) +
+            (heap[metadataIndex+1] << 8) +
+            (heap[metadataIndex+0] << 0));
 }
 
-uint8_t GetSingleMetadataValue(uint8_t variablePlace, VariablePropery property) {
-    return (*GetVectorMetadataAddress(variablePlace, property));
+uint8_t GetSingleMetadataValue(uint8_t vectorPlace, VariablePropery property) {
+    return (heap[GetVectorMetadataIndex(vectorPlace, property)]);
 }
 
-void SetMetadataValueMulti(uint8_t variablePlace, VariablePropery property, int value) {
-    // cout << ((value & 0xff000000) >> 24) << "\n";
-    // cout << ((value & 0x00ff0000) >> 16) << "\n";
-    // cout << ((value & 0x0000ff00) >> 8) << "\n";
-    // cout << ((value & 0x000000ff) >> 0) << "\n###########\n";
-    GetVectorMetadataAddress(variablePlace, property)[0] = (value & 0xff000000) >> 24;
-    GetVectorMetadataAddress(variablePlace, property)[1] = (value & 0x00ff0000) >> 16;
-    GetVectorMetadataAddress(variablePlace, property)[2] = (value & 0x0000ff00) >> 8;
-    GetVectorMetadataAddress(variablePlace, property)[3] = (value & 0x000000ff) >> 0;
+void SetMetadataValueSingle(uint8_t vectorPlace, VariablePropery property, uint8_t value) {
+    heap[GetVectorMetadataIndex(vectorPlace, property)] = value;
 }
 
-void SetMetadataValueSingle(uint8_t variablePlace, VariablePropery property, uint8_t value) {
-    *GetVectorMetadataAddress(variablePlace, property) = value;
-}
-
-void SetMetadataValue(uint8_t variablePlace, VariablePropery property, int value) {
+void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) {
     switch (property) {
         case VariablePropery::capacity:
         case VariablePropery::startIndex:
         case VariablePropery::size:
-            SetMetadataValueMulti(variablePlace, property, value);
+            SetMultiValue(value,
+                          GetVectorMetadataIndex(vectorPlace, property));
+            // SetMetadataValueMulti(vectorPlace, property, value);
             break;
         case VariablePropery::id:
         case VariablePropery::type:
-            SetMetadataValueSingle(variablePlace, property, value);
+            SetMetadataValueSingle(vectorPlace, property, value);
         default:
             break;
     }
 }
 
-// Metadata starts from end. Last byte is number of vars. Next five bytes are:
-// capacity, size, type, start index, id
-int malloc(int neededByteCount) {
+// Metadata starts from end.
+int myMalloc(int neededByteCount, int16_t variablePlace) {
     uint8_t vectorCount = heap[VECTOR_COUNT_ADDR];
     int counter = 0;
-    for (int i = 0; i < HEAP_SIZE - 1 - vectorCount * VAR_METADATA_SIZE; i++) {
+    for (int i = 0;
+         i < HEAP_SIZE - STATIC_METADATA_SIZE - vectorCount * VAR_METADATA_SIZE; i++) {
         if (counter == neededByteCount) return i - neededByteCount;
         for (int j = 0; j < vectorCount; j++) {
-            int currVarStart =
-                GetMultiMetadataValue(j, VariablePropery::startIndex);
-            int currVarCapacity =
-                GetMultiMetadataValue(j, VariablePropery::capacity);
+            if (j == variablePlace) continue;
+            int currVarStart = GetMultiMetadataValue(j, VariablePropery::startIndex),
+                currVarCapacity = GetMultiMetadataValue(j, VariablePropery::capacity);
 
             if (i >= currVarStart) {
                 counter = 0;
-                // Minus one becase after continue i gets automatically
-                // increamented by one by for loop
+                // Minus one becase after continue i gets automatically increamented by one by for loop
                 i += currVarCapacity - 1;
                 goto collision;
             }
@@ -117,7 +118,7 @@ int malloc(int neededByteCount) {
     return -1;
 }
 
-int GetVectorPlaceByID(uint8_t id) {
+uint8_t GetVectorPlace(uint8_t id) {
     for (int i = 0; i < heap[VECTOR_COUNT_ADDR]; i++) {
         if (GetSingleMetadataValue(i, VariablePropery::id) == id) return i;
     }
@@ -158,11 +159,11 @@ int DefineVector(Type t) {
 }
 
 void DeleteVector(uint8_t id) {
-    int place = GetVectorPlaceByID(id);
+    int place = GetVectorPlace(id);
     if (place == -1) return;
     for (int i = place; i < heap[VECTOR_COUNT_ADDR] - 1; i++) {
         // I know for multibyte metadatas manually assigning is faster but this
-        // way is more readable and cleaner. Capacity        
+        // way is more readable and cleaner. Capacity
         SetMetadataValue(
             i, VariablePropery::capacity,
             GetMultiMetadataValue(i + 1, VariablePropery::capacity));
@@ -183,8 +184,44 @@ void DeleteVector(uint8_t id) {
     heap[VECTOR_COUNT_ADDR]--;
 }
 
+void SetMultiValue(int value, int startIndex) {
+    uint8_t* ptr = (uint8_t*)(&value);
+    for (int i = 0; i < sizeof(int); i++) heap[startIndex + i] = ptr[i];
+}
+void SetMultiValue(double value, int startIndex) {
+    uint8_t* ptr = (uint8_t*)(&value);
+    for (int i = 0; i < sizeof(double); i++) heap[startIndex + i] = ptr[i];
+}
+
+void myMemcpy(int from, int to, int size) {
+    for (int i = 0; i < size; i++) {
+        heap[to + i] = heap[from + i];
+    }
+}
+
 void VectorPushBack(uint8_t id, int value) {
-    
+    uint8_t vectorPlace = GetVectorPlace(id);
+    int vectorSize = GetMultiMetadataValue(vectorPlace, VariablePropery::size),
+        vectorCapacity = GetMultiMetadataValue(vectorPlace, VariablePropery::capacity),
+        vectorStart = GetMultiMetadataValue(vectorPlace, VariablePropery::startIndex);
+
+    if (vectorSize >= vectorCapacity) {
+        printf("No more capacity available! start index: %d capacity: %d size: %d Trying to malloc...\n", vectorStart, vectorCapacity, vectorSize);
+        int newVectorCapacity = vectorCapacity * 1.5 + 1;
+        int newVectorStart = myMalloc(newVectorCapacity*sizeof(int), vectorPlace);
+        if (newVectorStart == -1) {
+            cout << "No more memory available!\n";
+            return;
+        }
+        printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newVectorCapacity);
+        SetMetadataValue(vectorPlace, VariablePropery::capacity, newVectorCapacity);
+        SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
+        if(vectorStart>0)
+            myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(int));
+        vectorStart = newVectorStart;
+    }
+    SetMultiValue(value, vectorStart+(vectorSize*sizeof(int)));
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
 
 void VectorPushBack(uint8_t id, double value) {}
