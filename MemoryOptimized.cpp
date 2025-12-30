@@ -61,6 +61,9 @@ int main() {
     VectorPushBack(doubleVector, 100.0);
     VectorPushBack(doubleVector, 123.2);
     VectorPushBack(doubleVector, 1.6);
+
+    VectorPopBack(intVector);
+    VectorPopBack(doubleVector);
     return 0;
 }
 
@@ -147,7 +150,8 @@ int GetMetadataValue(uint8_t vectorPlace, VariablePropery property) {
             return _GetSingleMetadataValue(vectorPlace, property);
         default:
             break;
-    }  
+    }
+    return -1;
 }
 void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) {
     switch (property) {
