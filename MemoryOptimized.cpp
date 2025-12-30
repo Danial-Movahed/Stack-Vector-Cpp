@@ -41,7 +41,7 @@ void VectorPushBack(uint8_t id, double value);
 
 int main() {
     uint8_t intVector = DefineVector(Type::Int);
-    // uint8_t doubleVector = DefineVector(Type::Double);
+    uint8_t doubleVector = DefineVector(Type::Double);
     // uint8_t int2Vector = DefineVector(Type::Int);
     // DeleteVector(intVector);
     VectorPushBack(intVector, 12);
@@ -51,6 +51,14 @@ int main() {
     VectorPushBack(intVector, 9);
     VectorPushBack(intVector, 3);
     VectorPushBack(intVector, 1);
+
+    VectorPushBack(doubleVector, 1.1);
+    VectorPushBack(doubleVector, 3.2);
+    VectorPushBack(doubleVector, 4.5);
+    VectorPushBack(doubleVector, 9.1);
+    VectorPushBack(doubleVector, 100.0);
+    VectorPushBack(doubleVector, 123.2);
+    VectorPushBack(doubleVector, 1.6);
     return 0;
 }
 
@@ -102,12 +110,14 @@ int myMalloc(int neededByteCount, int16_t variablePlace) {
         for (int j = 0; j < vectorCount; j++) {
             if (j == variablePlace) continue;
             int currVarStart = GetMultiMetadataValue(j, VariablePropery::startIndex),
-                currVarCapacity = GetMultiMetadataValue(j, VariablePropery::capacity);
-
-            if (i >= currVarStart) {
+                currVarCapacity = GetMultiMetadataValue(j, VariablePropery::capacity),
+                currVarType = GetSingleMetadataValue(j, VariablePropery::type);
+            if(currVarStart == -1)
+                continue;
+            if (i >= currVarStart && i<currVarStart+(currVarCapacity*currVarType)) {
                 counter = 0;
                 // Minus one becase after continue i gets automatically increamented by one by for loop
-                i += currVarCapacity - 1;
+                i += (currVarCapacity*currVarType) - 1;
                 goto collision;
             }
         }
@@ -224,4 +234,27 @@ void VectorPushBack(uint8_t id, int value) {
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
 
-void VectorPushBack(uint8_t id, double value) {}
+void VectorPushBack(uint8_t id, double value) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    int vectorSize = GetMultiMetadataValue(vectorPlace, VariablePropery::size),
+        vectorCapacity = GetMultiMetadataValue(vectorPlace, VariablePropery::capacity),
+        vectorStart = GetMultiMetadataValue(vectorPlace, VariablePropery::startIndex);
+
+    if (vectorSize >= vectorCapacity) {
+        printf("No more capacity available! start index: %d capacity: %d size: %d Trying to malloc...\n", vectorStart, vectorCapacity, vectorSize);
+        int newVectorCapacity = vectorCapacity * 1.5 + 1;
+        int newVectorStart = myMalloc(newVectorCapacity*sizeof(double), vectorPlace);
+        if (newVectorStart == -1) {
+            cout << "No more memory available!\n";
+            return;
+        }
+        printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newVectorCapacity);
+        SetMetadataValue(vectorPlace, VariablePropery::capacity, newVectorCapacity);
+        SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
+        if(vectorStart>0)
+            myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(double));
+        vectorStart = newVectorStart;
+    }
+    SetMultiValue(value, vectorStart+(vectorSize*sizeof(double)));
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+}
