@@ -92,6 +92,11 @@ int main() {
     cout<<VectorIntAt(intVector, 7)<<"\n";
     cout<<VectorDoubleAt(doubleVector, 1)<<"\n";
 
+    int* intVectorData = VectorIntData(intVector);
+    cout<<*(intVectorData+1)<<"\n";
+    double* doubleVectorData = VectorDoubleData(doubleVector);
+    cout<<*(doubleVectorData+1)<<"\n";
+
     // for(int i=0; i<255; i++) {
     //     // cout<<i<<endl;
     //     cout<<(int)VectorDefine(Type::Int)<<"\n";
