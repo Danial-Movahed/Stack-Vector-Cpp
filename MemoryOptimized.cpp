@@ -34,11 +34,14 @@ enum class VariablePropery {
 // First I made these functions return pointer but I thought that because our heap is defined as an array then address
 // of each value will become its index so it makes more sense to use index instead of pointers.
 // So derefrencing becomes returning heap[index]
+// Typically these functions should not be used
+// Metadata starts from end.
 int _GetVectorMetadataIndex(uint8_t, VariablePropery);
 uint8_t _GetSingleMetadataValue(uint8_t, VariablePropery);
 int _GetMultiMetadataValue(uint8_t, VariablePropery);
 void _SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
 
+// These functions can be used instead
 int myMalloc(int, uint8_t = ENOVARIABLE);
 void myMemcpy(int, int, int);
 void SetMultiValue(int, int);
@@ -91,13 +94,10 @@ int main() {
     return 0;
 }
 
-// Typically these functions should not be used
-// Metadata starts from end.
 int _GetVectorMetadataIndex(uint8_t vectorPlace, VariablePropery property) {
     return (HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
                           (vectorPlace * VAR_METADATA_SIZE) - ((int)property));
 }
-
 uint8_t _GetSingleMetadataValue(uint8_t vectorPlace, VariablePropery property) {
     return (heap[_GetVectorMetadataIndex(vectorPlace, property)]);
 }
@@ -105,13 +105,10 @@ int _GetMultiMetadataValue(uint8_t vectorPlace, VariablePropery property) {
     int metadataIndex = _GetVectorMetadataIndex(vectorPlace, property);
     return GetMultiIntValue(metadataIndex);
 }
-
 void _SetMetadataValueSingle(uint8_t vectorPlace, VariablePropery property, uint8_t value) {
     heap[_GetVectorMetadataIndex(vectorPlace, property)] = value;
 }
 
-
-// These functions can be used instead
 int myMalloc(int neededByteCount, uint8_t variablePlace) {
     uint8_t vectorCount = heap[VECTOR_COUNT_ADDR];
     int counter = 0;
@@ -228,7 +225,6 @@ void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) 
             break;
     }
 }
-
 
 // TODO: Get init values
 uint8_t VectorDefine(Type t) {
