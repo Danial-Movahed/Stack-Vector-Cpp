@@ -58,6 +58,11 @@ void VectorPushBack(uint8_t, double);
 void VectorPopBack(uint8_t);
 int VectorIntAt(uint8_t, int);
 double VectorDoubleAt(uint8_t, int);
+int VectorSize(uint8_t);
+int* VectorIntData(uint8_t);
+double* VectorDoubleData(uint8_t);
+void VectorClear(uint8_t);
+void VectorFree(uint8_t);
 
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
@@ -382,4 +387,53 @@ double VectorDoubleAt(uint8_t id, int index) {
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     return GetMultiDoubleValue(vectorStart+index*sizeof(double));
+}
+
+int VectorSize(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return EINVALID;
+    }
+    int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
+    return vectorSize;
+}
+
+int* VectorIntData(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return nullptr;
+    }
+    int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+    return (int*)(&heap[vectorStart]);
+}
+double* VectorDoubleData(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return nullptr;
+    }
+    int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+    return (double*)(&heap[vectorStart]);
+}
+
+void VectorClear(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return;
+    }
+    SetMetadataValue(vectorPlace, VariablePropery::size, 0);
+}
+
+void VectorFree(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return;
+    }
+    SetMetadataValue(vectorPlace, VariablePropery::size, 0);
+    SetMetadataValue(vectorPlace, VariablePropery::capacity, 0);
+    SetMetadataValue(vectorPlace, VariablePropery::startIndex, -1);
 }
