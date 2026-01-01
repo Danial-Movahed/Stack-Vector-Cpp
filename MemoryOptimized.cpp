@@ -3,24 +3,22 @@
 
 using namespace std;
 
-#define HEAP_SIZE 1000000
-// #define HEAP_SIZE 1000
-#define VAR_METADATA_SIZE 14
-#define STATIC_METADATA_SIZE 1
-#define VECTOR_COUNT_ADDR HEAP_SIZE - 1
-#define EINVALID -1
-#define ENOVARIABLE 255
-// 254 because 255 is reserved for no variable error
-#define MAX_VAR_CNT_ID 254
-
+// Options!
 // Use c++ builtin casting using pointer cast and derefrencing
 #define USE_POINTER_CAST_GETTER
 #define USE_POINTER_CAST_SETTER
 // Use pointer arithmetic instead of manually using *sizeof(type)
 #define USE_POINTER_ARITHMETIC
 
-
-
+// Static values!
+// #define HEAP_SIZE 1000
+#define HEAP_SIZE 1000000
+#define VAR_METADATA_SIZE 14
+#define STATIC_METADATA_SIZE 1
+#define VECTOR_COUNT_ADDR HEAP_SIZE - 1
+#define EINVALID -1
+#define ENOVARIABLE 255
+#define MAX_VAR_CNT 255 // 254 because 255 is reserved for no variable error
 
 uint8_t heap[HEAP_SIZE];
 
@@ -87,8 +85,8 @@ int main() {
     cout<<VectorDoubleAt(doubleVector, 1)<<"\n";
 
     // for(int i=0; i<255; i++) {
-    //     cout<<i<<endl;
-    //     VectorDefine(Type::Int);
+    //     // cout<<i<<endl;
+    //     cout<<(int)VectorDefine(Type::Int)<<"\n";
     // }
     return 0;
 }
@@ -234,7 +232,7 @@ void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) 
 
 // TODO: Get init values
 uint8_t VectorDefine(Type t) {
-    if (heap[VECTOR_COUNT_ADDR] == MAX_VAR_CNT_ID) {
+    if (heap[VECTOR_COUNT_ADDR] == MAX_VAR_CNT) {
         cout << "No room for other vectors!\n";
         return ENOVARIABLE;
     }
