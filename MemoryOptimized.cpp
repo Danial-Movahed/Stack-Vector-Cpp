@@ -63,15 +63,17 @@ int* VectorIntData(uint8_t);
 double* VectorDoubleData(uint8_t);
 void VectorClear(uint8_t);
 void VectorFree(uint8_t);
+void VectorResize(uint8_t, int);
 void VectorReserve(uint8_t, int);
+void VectorShrink2Fit(uint8_t);
 
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
     uint8_t doubleVector = VectorDefine(Type::Double);
     // uint8_t int2Vector = DefineVector(Type::Int);
     // VectorDelete(intVector);
-    VectorReserve(doubleVector, 10);
-    VectorReserve(intVector, 10);
+    // VectorReserve(doubleVector, 10);
+    // VectorReserve(intVector, 10);
 
     VectorPushBack(intVector, 12);
     VectorPushBack(intVector, 2);
@@ -308,24 +310,13 @@ void VectorPushBack(uint8_t id, int value) {
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
-        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity),
-        vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! start index: %d capacity: %d size: %d Trying to malloc...\n", vectorStart, vectorCapacity, vectorSize);
-        int newVectorCapacity = vectorCapacity * 1.5 + 1;
-        int newVectorStart = myMalloc(newVectorCapacity*sizeof(int), vectorPlace);
-        if (newVectorStart == -EINVALID) {
-            cout << "No more memory available!\n";
-            return;
-        }
-        printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newVectorCapacity);
-        SetMetadataValue(vectorPlace, VariablePropery::capacity, newVectorCapacity);
-        SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
-        if(vectorStart>0)
-            myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(int));
-        vectorStart = newVectorStart;
+        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        VectorResize(vectorPlace, vectorCapacity * 1.5 + 1);
     }
+    int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMultiValue(value, vectorStart+(vectorSize*sizeof(int)));
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
@@ -336,24 +327,13 @@ void VectorPushBack(uint8_t id, double value) {
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
-        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity),
-        vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! start index: %d capacity: %d size: %d Trying to malloc...\n", vectorStart, vectorCapacity, vectorSize);
-        int newVectorCapacity = vectorCapacity * 1.5 + 1;
-        int newVectorStart = myMalloc(newVectorCapacity*sizeof(double), vectorPlace);
-        if (newVectorStart == -EINVALID) {
-            cout << "No more memory available!\n";
-            return;
-        }
-        printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newVectorCapacity);
-        SetMetadataValue(vectorPlace, VariablePropery::capacity, newVectorCapacity);
-        SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
-        if(vectorStart>0)
-            myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(double));
-        vectorStart = newVectorStart;
+        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        VectorResize(vectorPlace, vectorCapacity * 1.5 + 1);
     }
+    int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMultiValue(value, vectorStart+(vectorSize*sizeof(double)));
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
@@ -448,24 +428,42 @@ void VectorFree(uint8_t id) {
     SetMetadataValue(vectorPlace, VariablePropery::startIndex, -1);
 }
 
+void VectorResize(uint8_t vectorPlace, int newCapacity) {
+    int vectorType = GetMetadataValue(vectorPlace, VariablePropery::type),
+        vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
+        vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
+    if (newCapacity < vectorSize) {
+        cout<<"Error: Not resizing less than vector size and this should not happen!! Data loss might occur! If you really want this use pop_back() instead and then shrink2fit()\n";
+        return;
+    }
+    int newVectorStart = myMalloc(newCapacity*vectorType, vectorPlace);
+    if (newVectorStart == -EINVALID) {
+        cout << "No more memory available!\n";
+        return;
+    }
+    printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newCapacity);
+    SetMetadataValue(vectorPlace, VariablePropery::capacity, newCapacity);
+    SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
+    if(vectorStart>0 && newVectorStart!=vectorStart)
+        myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(int));
+}
+
 void VectorReserve(uint8_t id, int size2Reserve) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
         cout<<"Variable doesn't exist!\n";
         return;
     }
-    int vectorType = GetMetadataValue(vectorPlace, VariablePropery::type),
-        vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
-        vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
     int newVectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity) + size2Reserve;
-    int newVectorStart = myMalloc(newVectorCapacity*vectorType, vectorPlace);
-    if (newVectorStart == -EINVALID) {
-        cout << "No more memory available!\n";
+    VectorResize(vectorPlace, newVectorCapacity);
+}
+
+void VectorShrink2Fit(uint8_t id) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
         return;
     }
-    printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newVectorCapacity);
-    SetMetadataValue(vectorPlace, VariablePropery::capacity, newVectorCapacity);
-    SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
-    if(vectorStart>0)
-        myMemcpy(vectorStart, newVectorStart, vectorSize*sizeof(int));
+    int newVectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::size);
+    VectorResize(vectorPlace, newVectorCapacity);
 }
