@@ -90,9 +90,9 @@ int main() {
     VectorPushBack(intVector, 2);
     VectorPushBack(doubleVector, 3.2);
 
-    VectorArbitraryPushBack(intVector, 1, 999);
-
+    
     VectorPushBack(intVector, 15);
+    VectorArbitraryPushBack(intVector, 1, 999);
     VectorPushBack(intVector, 100);
     VectorPushBack(intVector, 99999999);
     VectorPushBack(intVector, 9);
@@ -569,16 +569,16 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
         SetMetadataValue(vectorPlace, VariablePropery::capacity, (int)(vectorCapacity * 1.5 + 1));
         SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
 
-
-        myMemcpy(vectorStart, newVectorStart, (index-1)*sizeof(int));
+        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+        myMemcpy(vectorStart, newVectorStart, (index)*sizeof(int));
         SetMultiValue(value, newVectorStart+(index*sizeof(int)));
-        myMemcpy(vectorStart+(index*sizeof(int)), newVectorStart+(index*sizeof(int)), (vectorSize-index-1)*sizeof(int));
+        myMemcpy(vectorStart+(index*sizeof(int)), newVectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int));
         return;
     }
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+(index*sizeof(int))+1, (vectorSize-index)*sizeof(int));
+    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int))+1, (vectorSize-index)*sizeof(int));
     SetMultiValue(value, vectorStart+(index*sizeof(int)));
     
 }
