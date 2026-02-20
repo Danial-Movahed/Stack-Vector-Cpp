@@ -7,7 +7,8 @@ using namespace std;
 // Use c++ builtin casting using pointer cast and derefrencing
 #define USE_POINTER_CAST_GETTER
 #define USE_POINTER_CAST_SETTER
-// Use pointer arithmetic instead of manually using *sizeof(type)
+// TODO: Use pointer arithmetic instead of manually using *sizeof(type)
+// CURRENTLY NOT IMPLEMENTED!!!!!!
 #define USE_POINTER_ARITHMETIC
 
 // Static values!
