@@ -16,7 +16,7 @@ using namespace std;
 #define VAR_METADATA_SIZE 14
 #define STATIC_METADATA_SIZE 1
 #define VECTOR_COUNT_ADDR HEAP_SIZE - 1
-#define EINVALID 1
+#define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors
 #define ENOVARIABLE 255
 #define MAX_VAR_CNT 255 // 0-254 which counts to 255 because number 255 is reserved for no variable error
 
@@ -71,7 +71,13 @@ void VectorCopy(uint8_t, uint8_t);
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
     uint8_t doubleVector = VectorDefine(Type::Double);
-    // uint8_t int2Vector = DefineVector(Type::Int);
+    uint8_t intVector2 = VectorDefine(Type::Int);
+
+    VectorCopy(intVector, intVector2);
+    cout<<VectorIntAt(intVector2, 0)<<"\n";
+    cout<<VectorIntAt(intVector2, 1)<<"\n";
+    cout<<VectorIntAt(intVector2, 2)<<"\n";
+
     // VectorDelete(intVector);
     // VectorReserve(doubleVector, 10);
     // VectorReserve(intVector, 10);
@@ -110,6 +116,11 @@ int main() {
     double* doubleVectorData = VectorDoubleData(doubleVector);
     cout<<*(doubleVectorData+1)<<"\n";
 
+    VectorCopy(intVector, intVector2);
+    cout<<VectorIntAt(intVector2, 0)<<"\n";
+    cout<<VectorIntAt(intVector2, 1)<<"\n";
+    cout<<VectorIntAt(intVector2, 2)<<"\n";
+
     // for(int i=0; i<255; i++) {
     //     // cout<<i<<endl;
     //     cout<<(int)VectorDefine(Type::Int)<<"\n";
@@ -133,6 +144,8 @@ void _SetMetadataValueSingle(uint8_t vectorPlace, VariablePropery property, uint
 }
 
 int myMalloc(int neededByteCount, uint8_t variablePlace) {
+    if(neededByteCount <= 0)
+        return -1;
     uint8_t vectorCount = heap[VECTOR_COUNT_ADDR];
     int counter = 0;
     for (int i = 0;
