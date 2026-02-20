@@ -578,7 +578,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int))+1, (vectorSize-index)*sizeof(int));
+    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int), true);
     SetMultiValue(value, vectorStart+(index*sizeof(int)));
     
 }
