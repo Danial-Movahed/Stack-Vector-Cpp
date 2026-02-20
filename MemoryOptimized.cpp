@@ -101,6 +101,7 @@ int main() {
     VectorPushBack(intVector, 1);
 
     VectorPushBack(doubleVector, 4.5);
+    VectorArbitraryPushBack(doubleVector, 1, 3.141);
     VectorPushBack(doubleVector, 9.1);
     VectorPushBack(doubleVector, 100.0);
     VectorPushBack(doubleVector, 123.2);
@@ -561,7 +562,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
     if (vectorSize >= vectorCapacity) {
         printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
         // Not using VectorResize here to prevent useless copying two times. The code will be cleaner if I used that function though.
-        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(int), vectorPlace), vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);;
+        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(int), vectorPlace), vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
         if (newVectorStart == -EINVALID) {
             cout << "No more memory available!\n";
             return;
@@ -581,7 +582,6 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
     myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int), true);
     SetMultiValue(value, vectorStart+(index*sizeof(int)));
-    
 }
 void VectorArbitraryPushBack(uint8_t id, int index, double value) {
     uint8_t vectorPlace = GetVectorPlace(id);
@@ -590,16 +590,33 @@ void VectorArbitraryPushBack(uint8_t id, int index, double value) {
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
-        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
+    vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
+    if (index<0 || index>vectorSize) {
+        cout<<"Invalid push index!\n";
+        return;
+    }
 
     if (vectorSize >= vectorCapacity) {
         printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
-        if (VectorResize(vectorPlace, vectorCapacity * 1.5 + 1)) {
-            cout<<"An error occurred while resizing vector!\n";
+        // Not using VectorResize here to prevent useless copying two times. The code will be cleaner if I used that function though.
+        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(double), vectorPlace), vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+        if (newVectorStart == -EINVALID) {
+            cout << "No more memory available!\n";
             return;
         }
+        printf("malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, (int)(vectorCapacity * 1.5 + 1));
+        SetMetadataValue(vectorPlace, VariablePropery::capacity, (int)(vectorCapacity * 1.5 + 1));
+        SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
+
+        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+        myMemcpy(vectorStart, newVectorStart, (index)*sizeof(double));
+        SetMultiValue(value, newVectorStart+(index*sizeof(double)));
+        myMemcpy(vectorStart+(index*sizeof(double)), newVectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double));
+        return;
     }
+
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    SetMultiValue(value, vectorStart+(vectorSize*sizeof(double)));
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+    myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double), true);
+    SetMultiValue(value, vectorStart+(index*sizeof(double)));
 }
