@@ -70,6 +70,7 @@ void VectorShrink2Fit(uint8_t);
 void VectorCopy(uint8_t, uint8_t);
 void VectorArbitraryPushBack(uint8_t, int, int);
 void VectorArbitraryPushBack(uint8_t, int, double);
+void VectorEraseRange(uint8_t, int, int);
 
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
@@ -109,6 +110,9 @@ int main() {
 
     VectorPopBack(intVector);
     VectorPopBack(doubleVector);
+
+    VectorEraseRange(intVector, 1, VectorSize(intVector)-1);
+    VectorShrink2Fit(intVector);
 
     cout<<VectorIntAt(intVector, 0)<<"\n";
     cout<<VectorIntAt(intVector, 1)<<"\n";
@@ -619,4 +623,21 @@ void VectorArbitraryPushBack(uint8_t id, int index, double value) {
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
     myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double), true);
     SetMultiValue(value, vectorStart+(index*sizeof(double)));
+}
+
+void VectorEraseRange(uint8_t id, int fromIndex, int toIndex) {
+    uint8_t vectorPlace = GetVectorPlace(id);
+    if (vectorPlace == ENOVARIABLE) {
+        cout<<"Variable doesn't exist!\n";
+        return;
+    }
+    int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
+    if (fromIndex<0 || toIndex<0 || fromIndex>=vectorSize || toIndex>=vectorSize) {
+        cout<<"Invalid erase index!\n";
+        return;
+    }
+    int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
+        vectorType = GetMetadataValue(vectorPlace, VariablePropery::type);
+    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), vectorSize-toIndex, true);
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize-(toIndex-fromIndex+1));
 }
