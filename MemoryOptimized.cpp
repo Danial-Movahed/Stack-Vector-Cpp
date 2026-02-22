@@ -111,7 +111,7 @@ int main() {
     VectorPopBack(intVector);
     VectorPopBack(doubleVector);
 
-    VectorEraseRange(intVector, 1, VectorSize(intVector)-1);
+    VectorEraseRange(intVector, 1, VectorSize(intVector)-2);
     VectorShrink2Fit(intVector);
 
     cout<<VectorIntAt(intVector, 0)<<"\n";
