@@ -52,7 +52,7 @@ double GetMultiDoubleValue(int);
 uint8_t GetVectorPlace(uint8_t);
 int GetMetadataValue(uint8_t, VariablePropery);
 void SetMetadataValue(uint8_t, VariablePropery, int);
-uint8_t VectorDefine(Type);
+uint8_t VectorDefine(Type, void* = nullptr, size_t = 0);
 void VectorDelete(uint8_t);
 void VectorPushBack(uint8_t, int);
 void VectorPushBack(uint8_t, double);
@@ -75,9 +75,11 @@ void VectorEraseRange(uint8_t, int, int);
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
     uint8_t doubleVector = VectorDefine(Type::Double);
-    uint8_t intVector2 = VectorDefine(Type::Int);
+    int initValuesVector2[10] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    uint8_t intVector2 = VectorDefine(Type::Int, initValuesVector2, 10);
 
-    VectorCopy(intVector, intVector2);
+    // VectorCopy(intVector, intVector2);
+    
     cout<<VectorIntAt(intVector2, 0)<<"\n";
     cout<<VectorIntAt(intVector2, 1)<<"\n";
     cout<<VectorIntAt(intVector2, 2)<<"\n";
@@ -279,8 +281,7 @@ void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) 
     }
 }
 
-// TODO: Get init values
-uint8_t VectorDefine(Type t) {
+uint8_t VectorDefine(Type t, void* initData, size_t initDataSize) {
     if (heap[VECTOR_COUNT_ADDR] == MAX_VAR_CNT) {
         cout << "No room for other vectors!\n";
         return ENOVARIABLE;
@@ -297,18 +298,37 @@ uint8_t VectorDefine(Type t) {
     if (id == ENOVARIABLE) {
         id = heap[VECTOR_COUNT_ADDR];
     }
+
+    // Set init values! I could use vector pushback but that would mean setting size and capacity two times which is not efficient.
+    int newVectorStart = myMalloc(initDataSize*static_cast<int>(t));
+    if (newVectorStart == -EINVALID) {
+        cout << "No more memory available!\n";
+        newVectorStart = -1;
+    }
+
     // Create variable
     // Start index
-    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::startIndex, -1);
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::startIndex, newVectorStart);
     // Type
-    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::type, (int)(t));
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::type, static_cast<int>(t));
     // Size
-    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::size, 0);
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::size, initDataSize);
     // Capacity
-    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::capacity, 0);
+    SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::capacity, initDataSize);
     // ID
     SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::id, id);
     heap[VECTOR_COUNT_ADDR]++;
+
+    if(t == Type::Int) {
+        int* initDataPtr = (int*) initData;
+        for(int i=0; i<initDataSize; i++) 
+            ((int*)(&heap[newVectorStart]))[i]=initDataPtr[i];
+    } else if(t == Type::Double) {
+        double* initDataPtr = (double*) initData;
+        for(int i=0; i<initDataSize; i++) 
+            ((double*)(&heap[newVectorStart]))[i]=initDataPtr[i];
+    }
+
     return id;
 }
 void VectorDelete(uint8_t id) {
