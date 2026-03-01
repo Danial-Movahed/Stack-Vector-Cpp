@@ -1,15 +1,18 @@
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 
 using namespace std;
 
 // Options!
 // Use c++ builtin casting using pointer cast and derefrencing
-#define USE_POINTER_CAST_GETTER
-#define USE_POINTER_CAST_SETTER
-// TODO: Use pointer arithmetic instead of manually using *sizeof(type)
-// CURRENTLY NOT IMPLEMENTED!!!!!!
-#define USE_POINTER_ARITHMETIC
+// Use pointer arithmetic instead of manually using *sizeof(type) to automatically use correct index
+// #define USE_POINTER_CAST_GETTER
+// #define USE_POINTER_CAST_SETTER
+
+// Use memcpy to prevent undefined behaviour of strict aliasing and misalignment
+#define USE_MEMCPY_GETTER
+#define USE_MEMCPY_SETTER
 
 // Static values!
 #define HEAP_SIZE 1000
@@ -45,10 +48,10 @@ void _SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
 // These functions can be used instead
 int myMalloc(int, uint8_t = ENOVARIABLE);
 void myMemcpy(int, int, int, bool = false);
-void SetMultiValue(int, int);
-void SetMultiValue(double, int);
-int GetMultiIntValue(int);
-double GetMultiDoubleValue(int);
+void SetMultiValue(int, int, int=0);
+void SetMultiValue(double, int, int=0);
+int GetMultiIntValue(int, int=0);
+double GetMultiDoubleValue(int, int=0);
 uint8_t GetVectorPlace(uint8_t);
 int GetMetadataValue(uint8_t, VariablePropery);
 void SetMetadataValue(uint8_t, VariablePropery, int);
@@ -196,46 +199,55 @@ void myMemcpy(int from, int to, int size, bool doReverse) {
     }
 }
 
-void SetMultiValue(int value, int startIndex) {
+void SetMultiValue(int value, int startIndex, int index) {
     #ifdef USE_POINTER_CAST_SETTER
     int* ptr = (int*)(&heap[startIndex]);
-    *ptr=value;
+    ptr[index]=value;
     #else
     uint8_t* ptr = (uint8_t*)(&value);
-    for (int i = 0; i < sizeof(int); i++) heap[startIndex + i] = ptr[i];
+    for (int i = 0; i < sizeof(int); i++) heap[startIndex + index*sizeof(int) + i] = ptr[i];
     #endif
 }
-void SetMultiValue(double value, int startIndex) {
+void SetMultiValue(double value, int startIndex, int index) {
     #ifdef USE_POINTER_CAST_SETTER
     double* ptr = (double*)(&heap[startIndex]);
-    *ptr=value;
+    ptr[index]=value;
     #else
     uint8_t* ptr = (uint8_t*)(&value);
-    for (int i = 0; i < sizeof(double); i++) heap[startIndex + i] = ptr[i];
+    for (int i = 0; i < sizeof(double); i++) heap[startIndex + index*sizeof(double) + i] = ptr[i];
     #endif
 }
-int GetMultiIntValue(int startIndex) {
-    #ifdef USE_POINTER_CAST_GETTER
-    return *((int*)(&heap[startIndex]));
+int GetMultiIntValue(int startIndex, int index) {
+    #if defined(USE_MEMCPY_GETTER)
+    int out;
+    memcpy(&out, heap+startIndex+index*sizeof(int), sizeof(int));
+    return out;
+    #elif defined(USE_POINTER_CAST_GETTER)
+    return ((int*)(&heap[startIndex]))[index];
     #else
-    return ((heap[startIndex+3] << 24) +
-            (heap[startIndex+2] << 16) +
-            (heap[startIndex+1] << 8)  +
-            (heap[startIndex+0] << 0));
+    return ((heap[startIndex+index*sizeof(int)+3] << 24) +
+            (heap[startIndex+index*sizeof(int)+2] << 16) +
+            (heap[startIndex+index*sizeof(int)+1] << 8)  +
+            (heap[startIndex+index*sizeof(int)+0] << 0));
     #endif
 }
-double GetMultiDoubleValue(int startIndex) {
-    #ifdef USE_POINTER_CAST_GETTER
-    return *((double*)(&heap[startIndex]));
+double GetMultiDoubleValue(int startIndex, int index) {
+    #if defined(USE_MEMCPY_GETTER)
+    double out;
+    memcpy(&out, heap+startIndex+index*sizeof(double), sizeof(double));
+    return out;
+    #elif defined(USE_POINTER_CAST_GETTER)
+    return ((double*)(&heap[startIndex]))[index];
     #else
-    double out = (heap[startIndex+7] << 56) +
-                 (heap[startIndex+6] << 48) +
-                 (heap[startIndex+5] << 40) +
-                 (heap[startIndex+4] << 32) +
-                 (heap[startIndex+3] << 24) +
-                 (heap[startIndex+2] << 16) +
-                 (heap[startIndex+1] << 8)  +
-                 (heap[startIndex+0] << 0);
+    uint64_t tmp = (((uint64_t)heap[startIndex+index*sizeof(double)+7]) << 56) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+6]) << 48) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+5]) << 40) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+4]) << 32) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+3]) << 24) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+2]) << 16) +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+1]) << 8)  +
+                   (((uint64_t)heap[startIndex+index*sizeof(double)+0]) << 0);
+    double out = *((double*)(&tmp));
     return out;
     #endif
 }
@@ -376,7 +388,7 @@ void VectorPushBack(uint8_t id, int value) {
         }
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    SetMultiValue(value, vectorStart+(vectorSize*sizeof(int)));
+    SetMultiValue(value, vectorStart, vectorSize);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
 void VectorPushBack(uint8_t id, double value) {
@@ -396,7 +408,7 @@ void VectorPushBack(uint8_t id, double value) {
         }
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    SetMultiValue(value, vectorStart+(vectorSize*sizeof(double)));
+    SetMultiValue(value, vectorStart, vectorSize);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
 }
 
@@ -424,7 +436,7 @@ int VectorIntAt(uint8_t id, int index) {
         return -EINVALID;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    return GetMultiIntValue(vectorStart+index*sizeof(int));
+    return GetMultiIntValue(vectorStart, index);
 }
 double VectorDoubleAt(uint8_t id, int index) {
     uint8_t vectorPlace = GetVectorPlace(id);
@@ -438,7 +450,7 @@ double VectorDoubleAt(uint8_t id, int index) {
         return -EINVALID;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    return GetMultiDoubleValue(vectorStart+index*sizeof(double));
+    return GetMultiDoubleValue(vectorStart, index);
 }
 
 int VectorSize(uint8_t id) {
@@ -597,7 +609,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
 
         SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
         myMemcpy(vectorStart, newVectorStart, (index)*sizeof(int));
-        SetMultiValue(value, newVectorStart+(index*sizeof(int)));
+        SetMultiValue(value, newVectorStart, index);
         myMemcpy(vectorStart+(index*sizeof(int)), newVectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int));
         return;
     }
@@ -605,7 +617,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
     myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int), true);
-    SetMultiValue(value, vectorStart+(index*sizeof(int)));
+    SetMultiValue(value, vectorStart, index);
 }
 void VectorArbitraryPushBack(uint8_t id, int index, double value) {
     uint8_t vectorPlace = GetVectorPlace(id);
@@ -634,7 +646,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, double value) {
 
         SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
         myMemcpy(vectorStart, newVectorStart, (index)*sizeof(double));
-        SetMultiValue(value, newVectorStart+(index*sizeof(double)));
+        SetMultiValue(value, newVectorStart, index);
         myMemcpy(vectorStart+(index*sizeof(double)), newVectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double));
         return;
     }
@@ -642,7 +654,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, double value) {
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
     myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double), true);
-    SetMultiValue(value, vectorStart+(index*sizeof(double)));
+    SetMultiValue(value, vectorStart, index);
 }
 
 void VectorEraseRange(uint8_t id, int fromIndex, int toIndex) {
