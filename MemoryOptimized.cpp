@@ -10,9 +10,11 @@ using namespace std;
 // #define USE_POINTER_CAST_GETTER
 // #define USE_POINTER_CAST_SETTER
 
-// Use memcpy to prevent undefined behaviour of strict aliasing and misalignment
-#define USE_MEMCPY_GETTER
-#define USE_MEMCPY_SETTER
+#if !defined(USE_POINTER_CAST_GETTER) && !defined(USE_POINTER_CAST_SETTER)
+    // Use memcpy to prevent undefined behaviour: strict aliasing and misalignment
+    #define USE_MEMCPY_GETTER
+    #define USE_MEMCPY_SETTER
+#endif
 
 // Static values!
 #define HEAP_SIZE 1000
@@ -20,7 +22,7 @@ using namespace std;
 #define VAR_METADATA_SIZE 14
 #define STATIC_METADATA_SIZE 1
 #define VECTOR_COUNT_ADDR HEAP_SIZE - 1
-#define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors
+#define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors in myMalloc
 #define ENOVARIABLE 255
 #define MAX_VAR_CNT 255 // 0-254 which counts to 255 because number 255 is reserved for no variable error
 
@@ -200,55 +202,59 @@ void myMemcpy(int from, int to, int size, bool doReverse) {
 }
 
 void SetMultiValue(int value, int startIndex, int index) {
-    #ifdef USE_POINTER_CAST_SETTER
-    int* ptr = (int*)(&heap[startIndex]);
-    ptr[index]=value;
+    #if defined(USE_MEMCPY_SETTER)
+        memcpy(heap + startIndex + index*sizeof(int), &value, sizeof(int));
+    #elif defined(USE_POINTER_CAST_SETTER)
+        int* ptr = (int*)(&heap[startIndex]);
+        ptr[index]=value;
     #else
-    uint8_t* ptr = (uint8_t*)(&value);
-    for (int i = 0; i < sizeof(int); i++) heap[startIndex + index*sizeof(int) + i] = ptr[i];
+        uint8_t* ptr = (uint8_t*)(&value);
+        for (int i = 0; i < sizeof(int); i++) heap[startIndex + index*sizeof(int) + i] = ptr[i];
     #endif
 }
 void SetMultiValue(double value, int startIndex, int index) {
-    #ifdef USE_POINTER_CAST_SETTER
-    double* ptr = (double*)(&heap[startIndex]);
-    ptr[index]=value;
+    #if defined(USE_MEMCPY_SETTER)
+        memcpy(heap + startIndex + index*sizeof(double), &value, sizeof(double));
+    #elif defined(USE_POINTER_CAST_SETTER)
+        double* ptr = (double*)(&heap[startIndex]);
+        ptr[index]=value;
     #else
-    uint8_t* ptr = (uint8_t*)(&value);
-    for (int i = 0; i < sizeof(double); i++) heap[startIndex + index*sizeof(double) + i] = ptr[i];
+        uint8_t* ptr = (uint8_t*)(&value);
+        for (int i = 0; i < sizeof(double); i++) heap[startIndex + index*sizeof(double) + i] = ptr[i];
     #endif
 }
 int GetMultiIntValue(int startIndex, int index) {
     #if defined(USE_MEMCPY_GETTER)
-    int out;
-    memcpy(&out, heap+startIndex+index*sizeof(int), sizeof(int));
-    return out;
+        int out;
+        memcpy(&out, heap+startIndex+index*sizeof(int), sizeof(int));
+        return out;
     #elif defined(USE_POINTER_CAST_GETTER)
-    return ((int*)(&heap[startIndex]))[index];
+        return ((int*)(&heap[startIndex]))[index];
     #else
-    return ((heap[startIndex+index*sizeof(int)+3] << 24) +
-            (heap[startIndex+index*sizeof(int)+2] << 16) +
-            (heap[startIndex+index*sizeof(int)+1] << 8)  +
-            (heap[startIndex+index*sizeof(int)+0] << 0));
+        return ((heap[startIndex+index*sizeof(int)+3] << 24) +
+                (heap[startIndex+index*sizeof(int)+2] << 16) +
+                (heap[startIndex+index*sizeof(int)+1] << 8)  +
+                (heap[startIndex+index*sizeof(int)+0] << 0));
     #endif
 }
 double GetMultiDoubleValue(int startIndex, int index) {
     #if defined(USE_MEMCPY_GETTER)
-    double out;
-    memcpy(&out, heap+startIndex+index*sizeof(double), sizeof(double));
-    return out;
+        double out;
+        memcpy(&out, heap+startIndex+index*sizeof(double), sizeof(double));
+        return out;
     #elif defined(USE_POINTER_CAST_GETTER)
-    return ((double*)(&heap[startIndex]))[index];
+        return ((double*)(&heap[startIndex]))[index];
     #else
-    uint64_t tmp = (((uint64_t)heap[startIndex+index*sizeof(double)+7]) << 56) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+6]) << 48) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+5]) << 40) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+4]) << 32) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+3]) << 24) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+2]) << 16) +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+1]) << 8)  +
-                   (((uint64_t)heap[startIndex+index*sizeof(double)+0]) << 0);
-    double out = *((double*)(&tmp));
-    return out;
+        uint64_t tmp = (((uint64_t)heap[startIndex+index*sizeof(double)+7]) << 56) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+6]) << 48) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+5]) << 40) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+4]) << 32) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+3]) << 24) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+2]) << 16) +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+1]) << 8)  +
+                       (((uint64_t)heap[startIndex+index*sizeof(double)+0]) << 0);
+        double out = *((double*)(&tmp));
+        return out;
     #endif
 }
 
