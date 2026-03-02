@@ -471,8 +471,7 @@ int VectorSize(uint8_t id) {
         cout<<"Variable doesn't exist!\n";
         return -EINVALID;
     }
-    int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
-    return vectorSize;
+    return GetMetadataValue(vectorPlace, VariablePropery::size);
 }
 
 int* VectorIntData(uint8_t id) {
@@ -519,7 +518,7 @@ int VectorResize(uint8_t vectorPlace, int newCapacity) {
         vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
         vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
     if (newCapacity < vectorSize) {
-        cout<<"Error: Not resizing less than vector size and this should not happen!! Data loss might occur! If you really want this use pop_back() instead and then shrink2fit()\n";
+        cout<<"Error: Not resizing less than vector size and this should not happen!! Data loss might occur! If you really want this, use pop_back() instead and then shrink2fit()\n";
         return -EINVALID;
     }
     int newVectorStart = myMalloc(newCapacity*vectorType, vectorPlace);
