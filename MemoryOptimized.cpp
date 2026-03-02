@@ -16,20 +16,21 @@ using namespace std;
     #define USE_MEMCPY_SETTER
 #endif
 
-// Static values!
-#define HEAP_SIZE 1000
-// #define HEAP_SIZE 1000000
-#define VAR_METADATA_SIZE 14
-#define STATIC_METADATA_SIZE 1
-#define VECTOR_COUNT_ADDR HEAP_SIZE - 1
+// Constant values!
+const int HEAP_SIZE = 1000;
+// const int HEAP_SIZE = 1000000;
+const int VAR_METADATA_SIZE = 14;
+const int STATIC_METADATA_SIZE = 1; // Static in the sense that it is always there even when no variables exist. Currently only var count is static
+const int VECTOR_COUNT_ADDR = HEAP_SIZE - 1;
+const int MAX_VAR_CNT = 255; // 0-254 because number 255 is reserved for no variable error, which counts to 255
+// Errors
 #define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors in myMalloc
 #define ENOVARIABLE 255
-#define MAX_VAR_CNT 255 // 0-254 because number 255 is reserved for no variable error, which counts to 255 
 
 uint8_t heap[HEAP_SIZE];
 
 enum class Type { Int = sizeof(int), Double = sizeof(double) };
-enum class VariablePropery {
+enum class VariablePropery: int32_t {
     id = 0,  // Incremented 4 times because capacity, size and startIndex
              // are 32bit integers.
     type = 1,
@@ -300,6 +301,11 @@ void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) 
 }
 
 uint8_t VectorDefine(Type t, void* initData, size_t initDataSize) {
+    if (initData == nullptr && initDataSize > 0) {
+        cout << "Invalid initdata parameters!\n";
+        return ENOVARIABLE;
+    }
+
     if (heap[VECTOR_COUNT_ADDR] == MAX_VAR_CNT) {
         cout << "No room for other vectors!\n";
         return ENOVARIABLE;
