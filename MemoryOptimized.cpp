@@ -118,6 +118,7 @@ int main() {
     VectorPopBack(intVector);
     VectorPopBack(doubleVector);
 
+    cout<<"Int vector size: "<<VectorSize(intVector)<<"\n";
     VectorEraseRange(intVector, 1, VectorSize(intVector)-2);
     VectorShrink2Fit(intVector);
 
@@ -675,6 +676,6 @@ void VectorEraseRange(uint8_t id, int fromIndex, int toIndex) {
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
         vectorType = GetMetadataValue(vectorPlace, VariablePropery::type);
-    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), vectorSize-toIndex);
+    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), (vectorSize-toIndex-1)*vectorType);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize-(toIndex-fromIndex+1));
 }
