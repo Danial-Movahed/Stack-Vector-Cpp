@@ -49,7 +49,7 @@ void _SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
 
 // These functions can be used instead
 int myMalloc(int, uint8_t = ENOVARIABLE);
-void myMemcpy(int, int, int, bool = false);
+void myMemcpy(int, int, int);
 void SetMultiValue(int, int, int=0);
 void SetMultiValue(double, int, int=0);
 int GetMultiIntValue(int, int=0);
@@ -188,17 +188,16 @@ int myMalloc(int neededByteCount, uint8_t variablePlace) {
     }
     return -EINVALID;
 }
-void myMemcpy(int from, int to, int size, bool doReverse) {
-    if (doReverse) {
+void myMemcpy(int from, int to, int size) {
+    if (to == from) return;
+    if (from < to && from + size > to) {
         // We copy in reverse to prevent overwriting (e.g: In pushing in middle of vector)
-        for (int i = size-1; i >=0 ; i--) {
+        for (int i = size-1; i >=0 ; i--)
             heap[to + i] = heap[from + i];
-        }
         return;
     }
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
         heap[to + i] = heap[from + i];
-    }
 }
 
 void SetMultiValue(int value, int startIndex, int index) {
@@ -622,7 +621,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, int value) {
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int), true);
+    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int));
     SetMultiValue(value, vectorStart, index);
 }
 void VectorArbitraryPushBack(uint8_t id, int index, double value) {
@@ -659,7 +658,7 @@ void VectorArbitraryPushBack(uint8_t id, int index, double value) {
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double), true);
+    myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double));
     SetMultiValue(value, vectorStart, index);
 }
 
@@ -676,6 +675,6 @@ void VectorEraseRange(uint8_t id, int fromIndex, int toIndex) {
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
         vectorType = GetMetadataValue(vectorPlace, VariablePropery::type);
-    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), vectorSize-toIndex, true);
+    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), vectorSize-toIndex);
     SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize-(toIndex-fromIndex+1));
 }
