@@ -6,31 +6,36 @@ using namespace std;
 
 // Options!
 // Use c++ builtin casting using pointer cast and derefrencing
-// Use pointer arithmetic instead of manually using *sizeof(type) to automatically use correct index
+// Use pointer arithmetic instead of manually using *sizeof(type) to
+// automatically use correct index
 #define USE_POINTER_CAST_GETTER
 #define USE_POINTER_CAST_SETTER
 
 #if !defined(USE_POINTER_CAST_GETTER) && !defined(USE_POINTER_CAST_SETTER)
-    // Use memcpy to prevent undefined behaviour: strict aliasing and misalignment
-    #define USE_MEMCPY_GETTER
-    #define USE_MEMCPY_SETTER
+// Use memcpy to prevent undefined behaviour: strict aliasing and misalignment
+#define USE_MEMCPY_GETTER
+#define USE_MEMCPY_SETTER
 #endif
 
 // Constant values!
 const int HEAP_SIZE = 1000;
 // const int HEAP_SIZE = 1000000;
 const int VAR_METADATA_SIZE = 14;
-const int STATIC_METADATA_SIZE = 1; // Static in the sense that it is always there even when no variables exist. Currently only var count is static
+// Static in the sense that it is always there even when no variables
+// exist. Currently only varcount is static
+const int STATIC_METADATA_SIZE = 1;  
 const int VECTOR_COUNT_ADDR = HEAP_SIZE - 1;
-const int MAX_VAR_CNT = 255; // 0-254 because number 255 is reserved for no variable error, which counts to 255
+const int MAX_VAR_CNT = 255;  // 0-254 because number 255 is reserved for no
+                              // variable error, which counts to 255
+const int NOSTARTINDX = -1;
 // Errors
-#define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors in myMalloc
+#define EINVALID 2  // 2 because -1 is reserved for start index of empty vectors in myMalloc
 #define ENOVARIABLE 255
 
 uint8_t heap[HEAP_SIZE];
 
 enum class Type { Int = sizeof(int), Double = sizeof(double) };
-enum class VariablePropery: int32_t {
+enum class VariablePropery : int32_t {
     id = 0,  // Incremented 4 times because capacity, size and startIndex
              // are 32bit integers.
     type = 1,
@@ -38,10 +43,10 @@ enum class VariablePropery: int32_t {
     size = 9,
     startIndex = 13,
 };
-// First I made these functions return pointer but I thought that because our heap is defined as an array then address
-// of each value will become its index so it makes more sense to use index instead of pointers.
-// So derefrencing becomes returning heap[index]
-// Typically these functions should not be used
+// First I made these functions return pointer but I thought that because our
+// heap is defined as an array then address of each value will become its index
+// so it makes more sense to use index instead of pointers. So derefrencing
+// becomes returning heap[index] Typically these functions should not be used
 // Metadata starts from end.
 int _GetVectorMetadataIndex(uint8_t, VariablePropery);
 uint8_t _GetSingleMetadataValue(uint8_t, VariablePropery);
@@ -49,12 +54,18 @@ int _GetMultiMetadataValue(uint8_t, VariablePropery);
 void _SetMetadataValueSingle(uint8_t, VariablePropery, uint8_t);
 
 // These functions can be used instead
+// The second argument is used for detecting whether current variable should
+// be counted as free space or not. For example assume that we have a vector of
+// capacity=size=8 and we want to increase its capacity to 10 and we have 5 bytes
+// of space in front. In this case it is safe to assume that the variable is 
+// non existant and then find the first index that has 10 bytes free which is
+// still the same startIndex and therefore no need to copy memory.
 int myMalloc(int, uint8_t = ENOVARIABLE);
 void myMemcpy(int, int, int);
-void SetMultiValue(int, int, int=0);
-void SetMultiValue(double, int, int=0);
-int GetMultiIntValue(int, int=0);
-double GetMultiDoubleValue(int, int=0);
+void SetMultiValue(int, int, int = 0);
+void SetMultiValue(double, int, int = 0);
+int GetMultiIntValue(int, int = 0);
+double GetMultiDoubleValue(int, int = 0);
 uint8_t GetVectorPlace(uint8_t);
 int GetMetadataValue(uint8_t, VariablePropery);
 void SetMetadataValue(uint8_t, VariablePropery, int);
@@ -81,14 +92,16 @@ void VectorEraseRange(uint8_t, int, int);
 int main() {
     uint8_t intVector = VectorDefine(Type::Int);
     uint8_t doubleVector = VectorDefine(Type::Double);
-    int initValuesVector2[10] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int initValuesVector2[10]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     uint8_t intVector2 = VectorDefine(Type::Int, initValuesVector2, 10);
 
     // VectorCopy(intVector, intVector2);
-    
-    cout<<VectorIntAt(intVector2, 0)<<"\n";
-    cout<<VectorIntAt(intVector2, 1)<<"\n";
-    cout<<VectorIntAt(intVector2, 2)<<"\n";
+
+    cout << VectorIntAt(intVector2, 0) << "\n";
+    cout << VectorIntAt(intVector2, 1) << "\n";
+    cout << VectorIntAt(intVector2, 2) << "\n";
+
+    VectorDelete(intVector2);
 
     // VectorDelete(intVector);
     // VectorReserve(doubleVector, 10);
@@ -100,10 +113,10 @@ int main() {
     VectorPushBack(intVector, 2);
     VectorPushBack(doubleVector, 3.2);
 
-    
     VectorPushBack(intVector, 15);
     VectorArbitraryPushBack(intVector, 1, 999);
     VectorPushBack(intVector, 100);
+    VectorReserve(intVector, 5);
     VectorPushBack(intVector, 99999999);
     VectorPushBack(intVector, 9);
     VectorPushBack(intVector, 3);
@@ -119,26 +132,32 @@ int main() {
     VectorPopBack(intVector);
     VectorPopBack(doubleVector);
 
-    cout<<"Int vector size: "<<VectorSize(intVector)<<"\n";
-    VectorEraseRange(intVector, 1, VectorSize(intVector)-2);
+    cout << "Int vector size: " << VectorSize(intVector) << "\n";
+    VectorEraseRange(intVector, 1, VectorSize(intVector) - 2);
     VectorShrink2Fit(intVector);
 
-    cout<<VectorIntAt(intVector, 0)<<"\n";
-    cout<<VectorIntAt(intVector, 1)<<"\n";
-    cout<<VectorIntAt(intVector, 2)<<"\n";
-    cout<<VectorDoubleAt(doubleVector, 0)<<"\n";
-    cout<<VectorDoubleAt(doubleVector, 1)<<"\n";
-    cout<<VectorDoubleAt(doubleVector, 2)<<"\n";
+    cout << VectorIntAt(intVector, 0) << "\n";
+    cout << VectorIntAt(intVector, 1) << "\n";
+    cout << VectorIntAt(intVector, 2) << "\n";
+    cout << VectorDoubleAt(doubleVector, 0) << "\n";
+    cout << VectorDoubleAt(doubleVector, 1) << "\n";
+    cout << VectorDoubleAt(doubleVector, 2) << "\n";
 
     int* intVectorData = VectorIntData(intVector);
-    cout<<*(intVectorData+1)<<"\n";
+    cout << *(intVectorData + 1) << "\n";
     double* doubleVectorData = VectorDoubleData(doubleVector);
-    cout<<*(doubleVectorData+1)<<"\n";
+    cout << *(doubleVectorData + 1) << "\n";
+
+    VectorClear(doubleVector);
+    cout << VectorDoubleAt(doubleVector, 0) << "\n";
+
+    intVector2 = VectorDefine(Type::Int);
 
     VectorCopy(intVector, intVector2);
-    cout<<VectorIntAt(intVector2, 0)<<"\n";
-    cout<<VectorIntAt(intVector2, 1)<<"\n";
-    cout<<VectorIntAt(intVector2, 2)<<"\n";
+    VectorFree(intVector);
+    cout << VectorIntAt(intVector2, 0) << "\n";
+    cout << VectorIntAt(intVector2, 1) << "\n";
+    cout << VectorIntAt(intVector2, 2) << "\n";
 
     // for(int i=0; i<255; i++) {
     //     // cout<<i<<endl;
@@ -149,7 +168,7 @@ int main() {
 
 int _GetVectorMetadataIndex(uint8_t vectorPlace, VariablePropery property) {
     return (HEAP_SIZE - 1 - STATIC_METADATA_SIZE -
-                          (vectorPlace * VAR_METADATA_SIZE) - ((int)property));
+            (vectorPlace * VAR_METADATA_SIZE) - ((int)property));
 }
 uint8_t _GetSingleMetadataValue(uint8_t vectorPlace, VariablePropery property) {
     return (heap[_GetVectorMetadataIndex(vectorPlace, property)]);
@@ -163,24 +182,22 @@ void _SetMetadataValueSingle(uint8_t vectorPlace, VariablePropery property, uint
 }
 
 int myMalloc(int neededByteCount, uint8_t variablePlace) {
-    if(neededByteCount <= 0)
-        return -1;
+    if (neededByteCount <= 0) return NOSTARTINDX;
     uint8_t vectorCount = heap[VECTOR_COUNT_ADDR];
     int counter = 0;
-    for (int i = 0;
-         i < HEAP_SIZE - STATIC_METADATA_SIZE - vectorCount * VAR_METADATA_SIZE; i++) {
+    for (int i = 0; i < HEAP_SIZE - STATIC_METADATA_SIZE - vectorCount * VAR_METADATA_SIZE; i++) {
         if (counter == neededByteCount) return i - neededByteCount;
         for (int j = 0; j < vectorCount; j++) {
             if (j == variablePlace) continue;
             int currVarStart = GetMetadataValue(j, VariablePropery::startIndex),
                 currVarCapacity = GetMetadataValue(j, VariablePropery::capacity),
                 currVarType = GetMetadataValue(j, VariablePropery::type);
-            if(currVarStart == -1)
-                continue;
-            if (i >= currVarStart && i<currVarStart+(currVarCapacity*currVarType)) {
+            if (currVarStart == NOSTARTINDX) continue;
+            if (i >= currVarStart && i < currVarStart + (currVarCapacity * currVarType)) {
                 counter = 0;
-                // Minus one becase after continue i gets automatically increamented by one by for loop
-                i += (currVarCapacity*currVarType) - 1;
+                // Minus one becase after continue i gets automatically
+                // increamented by one by for loop
+                i += (currVarCapacity * currVarType) - 1;
                 goto collision;
             }
         }
@@ -194,69 +211,70 @@ void myMemcpy(int from, int to, int size) {
     if (to == from) return;
     if (from < to && from + size > to) {
         // We copy in reverse to prevent overwriting (e.g: In pushing in middle of vector)
-        for (int i = size-1; i >=0 ; i--)
-            heap[to + i] = heap[from + i];
+        for (int i = size - 1; i >= 0; i--) heap[to + i] = heap[from + i];
         return;
     }
-    for (int i = 0; i < size; i++)
-        heap[to + i] = heap[from + i];
+    for (int i = 0; i < size; i++) heap[to + i] = heap[from + i];
 }
 
 void SetMultiValue(int value, int startIndex, int index) {
-    #if defined(USE_MEMCPY_SETTER)
-        memcpy(heap + startIndex + index*sizeof(int), &value, sizeof(int));
-    #elif defined(USE_POINTER_CAST_SETTER)
-        int* ptr = (int*)(&heap[startIndex]);
-        ptr[index]=value;
-    #else
-        uint8_t* ptr = (uint8_t*)(&value);
-        for (int i = 0; i < sizeof(int); i++) heap[startIndex + index*sizeof(int) + i] = ptr[i];
-    #endif
+#if defined(USE_MEMCPY_SETTER)
+    memcpy(heap + startIndex + index * sizeof(int), &value, sizeof(int));
+#elif defined(USE_POINTER_CAST_SETTER)
+    int* ptr = (int*)(&heap[startIndex]);
+    ptr[index] = value;
+#else
+    uint8_t* ptr = (uint8_t*)(&value);
+    for (int i = 0; i < sizeof(int); i++)
+        heap[startIndex + index * sizeof(int) + i] = ptr[i];
+#endif
 }
 void SetMultiValue(double value, int startIndex, int index) {
-    #if defined(USE_MEMCPY_SETTER)
-        memcpy(heap + startIndex + index*sizeof(double), &value, sizeof(double));
-    #elif defined(USE_POINTER_CAST_SETTER)
-        double* ptr = (double*)(&heap[startIndex]);
-        ptr[index]=value;
-    #else
-        uint8_t* ptr = (uint8_t*)(&value);
-        for (int i = 0; i < sizeof(double); i++) heap[startIndex + index*sizeof(double) + i] = ptr[i];
-    #endif
+#if defined(USE_MEMCPY_SETTER)
+    memcpy(heap + startIndex + index * sizeof(double), &value, sizeof(double));
+#elif defined(USE_POINTER_CAST_SETTER)
+    double* ptr = (double*)(&heap[startIndex]);
+    ptr[index] = value;
+#else
+    uint8_t* ptr = (uint8_t*)(&value);
+    for (int i = 0; i < sizeof(double); i++)
+        heap[startIndex + index * sizeof(double) + i] = ptr[i];
+#endif
 }
 int GetMultiIntValue(int startIndex, int index) {
-    #if defined(USE_MEMCPY_GETTER)
-        int out;
-        memcpy(&out, heap+startIndex+index*sizeof(int), sizeof(int));
-        return out;
-    #elif defined(USE_POINTER_CAST_GETTER)
-        return ((int*)(&heap[startIndex]))[index];
-    #else
-        return ((heap[startIndex+index*sizeof(int)+3] << 24) +
-                (heap[startIndex+index*sizeof(int)+2] << 16) +
-                (heap[startIndex+index*sizeof(int)+1] << 8)  +
-                (heap[startIndex+index*sizeof(int)+0] << 0));
-    #endif
+#if defined(USE_MEMCPY_GETTER)
+    int out;
+    memcpy(&out, heap + startIndex + index * sizeof(int), sizeof(int));
+    return out;
+#elif defined(USE_POINTER_CAST_GETTER)
+    return ((int*)(&heap[startIndex]))[index];
+#else
+    return ((heap[startIndex + index * sizeof(int) + 3] << 24) +
+            (heap[startIndex + index * sizeof(int) + 2] << 16) +
+            (heap[startIndex + index * sizeof(int) + 1] << 8) +
+            (heap[startIndex + index * sizeof(int) + 0] << 0));
+#endif
 }
 double GetMultiDoubleValue(int startIndex, int index) {
-    #if defined(USE_MEMCPY_GETTER)
-        double out;
-        memcpy(&out, heap+startIndex+index*sizeof(double), sizeof(double));
-        return out;
-    #elif defined(USE_POINTER_CAST_GETTER)
-        return ((double*)(&heap[startIndex]))[index];
-    #else
-        uint64_t tmp = (((uint64_t)heap[startIndex+index*sizeof(double)+7]) << 56) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+6]) << 48) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+5]) << 40) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+4]) << 32) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+3]) << 24) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+2]) << 16) +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+1]) << 8)  +
-                       (((uint64_t)heap[startIndex+index*sizeof(double)+0]) << 0);
-        double out = *((double*)(&tmp));
-        return out;
-    #endif
+#if defined(USE_MEMCPY_GETTER)
+    double out;
+    memcpy(&out, heap + startIndex + index * sizeof(double), sizeof(double));
+    return out;
+#elif defined(USE_POINTER_CAST_GETTER)
+    return ((double*)(&heap[startIndex]))[index];
+#else
+    uint64_t tmp =
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 7]) << 56) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 6]) << 48) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 5]) << 40) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 4]) << 32) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 3]) << 24) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 2]) << 16) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 1]) << 8) +
+        (((uint64_t)heap[startIndex + index * sizeof(double) + 0]) << 0);
+    double out = *((double*)(&tmp));
+    return out;
+#endif
 }
 
 uint8_t GetVectorPlace(uint8_t id) {
@@ -285,13 +303,12 @@ void SetMetadataValue(uint8_t vectorPlace, VariablePropery property, int value) 
         case VariablePropery::capacity:
         case VariablePropery::startIndex:
         case VariablePropery::size:
-            SetMultiValue(value,
-                          _GetVectorMetadataIndex(vectorPlace, property));
+            SetMultiValue(value, _GetVectorMetadataIndex(vectorPlace, property));
             break;
         case VariablePropery::id:
         case VariablePropery::type:
-            if(value>255) {
-                cout<<"Metadata set value overflow detected! Aborting metadata set value, expect bugs!\n";
+            if (value > 255) {
+                cout << "Metadata set value overflow detected! Aborting metadata set value, expect bugs!\n";
                 return;
             }
             _SetMetadataValueSingle(vectorPlace, property, value);
@@ -319,15 +336,17 @@ uint8_t VectorDefine(Type t, void* initData, size_t initDataSize) {
     }
     for (int i = 0; i < heap[VECTOR_COUNT_ADDR]; i++)
         if (!varID[i]) id = i;
+    
     if (id == ENOVARIABLE) {
         id = heap[VECTOR_COUNT_ADDR];
     }
 
-    // Set init values! I could use vector pushback but that would mean setting size and capacity two times which is not efficient.
-    int newVectorStart = myMalloc(initDataSize*static_cast<int>(t));
+    // Set init values! I could use vector pushback but that would mean setting
+    // size and capacity two times which is not efficient.
+    int newVectorStart = myMalloc(initDataSize * static_cast<int>(t));
     if (newVectorStart == -EINVALID) {
         cout << "No more memory available!\n";
-        newVectorStart = -1;
+        newVectorStart = NOSTARTINDX;
     }
 
     // Create variable
@@ -343,14 +362,14 @@ uint8_t VectorDefine(Type t, void* initData, size_t initDataSize) {
     SetMetadataValue(heap[VECTOR_COUNT_ADDR], VariablePropery::id, id);
     heap[VECTOR_COUNT_ADDR]++;
 
-    if(t == Type::Int) {
-        int* initDataPtr = (int*) initData;
-        for(int i=0; i<initDataSize; i++) 
-            ((int*)(&heap[newVectorStart]))[i]=initDataPtr[i];
-    } else if(t == Type::Double) {
-        double* initDataPtr = (double*) initData;
-        for(int i=0; i<initDataSize; i++) 
-            ((double*)(&heap[newVectorStart]))[i]=initDataPtr[i];
+    if (t == Type::Int) {
+        int* initDataPtr = (int*)initData;
+        for (int i = 0; i < initDataSize; i++)
+            SetMultiValue(initDataPtr[i], newVectorStart, i);
+    } else if (t == Type::Double) {
+        double* initDataPtr = (double*)initData;
+        for (int i = 0; i < initDataSize; i++)
+            SetMultiValue(initDataPtr[i], newVectorStart, i);
     }
 
     return id;
@@ -358,27 +377,20 @@ uint8_t VectorDefine(Type t, void* initData, size_t initDataSize) {
 void VectorDelete(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     for (int i = vectorPlace; i < heap[VECTOR_COUNT_ADDR] - 1; i++) {
         // Capacity
-        SetMetadataValue(
-            i, VariablePropery::capacity,
-            GetMetadataValue(i + 1, VariablePropery::capacity));
+        SetMetadataValue(i, VariablePropery::capacity, GetMetadataValue(i + 1, VariablePropery::capacity));
         // // ID
-        SetMetadataValue(i, VariablePropery::id,
-                         GetMetadataValue(i + 1, VariablePropery::id));
+        SetMetadataValue(i, VariablePropery::id, GetMetadataValue(i + 1, VariablePropery::id));
         // // Size
-        SetMetadataValue(i, VariablePropery::size,
-                         GetMetadataValue(i + 1, VariablePropery::size));
+        SetMetadataValue(i, VariablePropery::size, GetMetadataValue(i + 1, VariablePropery::size));
         // // Start index
-        SetMetadataValue(
-            i, VariablePropery::startIndex,
-            GetMetadataValue(i + 1, VariablePropery::startIndex));
+        SetMetadataValue(i, VariablePropery::startIndex, GetMetadataValue(i + 1, VariablePropery::startIndex));
         // // Type
-        SetMetadataValue(i, VariablePropery::type,
-                         GetMetadataValue(i + 1, VariablePropery::type));
+        SetMetadataValue(i, VariablePropery::type, GetMetadataValue(i + 1, VariablePropery::type));
     }
     heap[VECTOR_COUNT_ADDR]--;
 }
@@ -386,65 +398,64 @@ void VectorDelete(uint8_t id) {
 void VectorPushBack(uint8_t id, int value) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
         vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        printf("DEBUG: No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
         if (VectorResize(vectorPlace, vectorCapacity * 1.5 + 1)) {
-            cout<<"An error occurred while resizing vector!\n";
+            cout << "An error occurred while resizing vector!\n";
             return;
         }
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMultiValue(value, vectorStart, vectorSize);
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
 }
 void VectorPushBack(uint8_t id, double value) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
         vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        printf("DEBUG: No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
         if (VectorResize(vectorPlace, vectorCapacity * 1.5 + 1)) {
-            cout<<"An error occurred while resizing vector!\n";
+            cout << "An error occurred while resizing vector!\n";
             return;
         }
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
     SetMultiValue(value, vectorStart, vectorSize);
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
 }
 
 void VectorPopBack(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
-    if(vectorSize < 1)
-        return;
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize-1);
+    if (vectorSize < 1) return;
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize - 1);
 }
 
 int VectorIntAt(uint8_t id, int index) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return -EINVALID;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
-    if(index>=vectorSize) {
-        cout<<"Out of bounds read!\n";
+    if (index >= vectorSize) {
+        cout << "Out of bounds read!\n";
         return -EINVALID;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
@@ -453,12 +464,12 @@ int VectorIntAt(uint8_t id, int index) {
 double VectorDoubleAt(uint8_t id, int index) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return -EINVALID;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
-    if(index>=vectorSize) {
-        cout<<"Out of bounds read!\n";
+    if (index >= vectorSize) {
+        cout << "Out of bounds read!\n";
         return -EINVALID;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
@@ -468,7 +479,7 @@ double VectorDoubleAt(uint8_t id, int index) {
 int VectorSize(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return -EINVALID;
     }
     return GetMetadataValue(vectorPlace, VariablePropery::size);
@@ -477,7 +488,7 @@ int VectorSize(uint8_t id) {
 int* VectorIntData(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return nullptr;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
@@ -486,7 +497,7 @@ int* VectorIntData(uint8_t id) {
 double* VectorDoubleData(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return nullptr;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
@@ -496,7 +507,7 @@ double* VectorDoubleData(uint8_t id) {
 void VectorClear(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     SetMetadataValue(vectorPlace, VariablePropery::size, 0);
@@ -505,12 +516,12 @@ void VectorClear(uint8_t id) {
 void VectorFree(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     SetMetadataValue(vectorPlace, VariablePropery::size, 0);
     SetMetadataValue(vectorPlace, VariablePropery::capacity, 0);
-    SetMetadataValue(vectorPlace, VariablePropery::startIndex, -1);
+    SetMetadataValue(vectorPlace, VariablePropery::startIndex, NOSTARTINDX);
 }
 
 int VectorResize(uint8_t vectorPlace, int newCapacity) {
@@ -518,31 +529,31 @@ int VectorResize(uint8_t vectorPlace, int newCapacity) {
         vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
         vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
     if (newCapacity < vectorSize) {
-        cout<<"Error: Not resizing less than vector size and this should not happen!! Data loss might occur! If you really want this, use pop_back() instead and then shrink2fit()\n";
+        cout << "Error: Not resizing less than vector size and this should not happen!! Data loss might occur! If you really want this, use pop_back() instead and then shrink2fit()\n";
         return -EINVALID;
     }
-    int newVectorStart = myMalloc(newCapacity*vectorType, vectorPlace);
+    int newVectorStart = myMalloc(newCapacity * vectorType, vectorPlace);
     if (newVectorStart == -EINVALID) {
         cout << "No more memory available!\n";
         return -EINVALID;
     }
-    printf("malloc succeded! new start index: %d new capacity: %d\n",newVectorStart, newCapacity);
+    printf("DEBUG: malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, newCapacity);
     SetMetadataValue(vectorPlace, VariablePropery::capacity, newCapacity);
     SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
-    if(vectorStart>-1 && newVectorStart!=vectorStart)
-        myMemcpy(vectorStart, newVectorStart, vectorSize*vectorType);
+    if (vectorStart > NOSTARTINDX && newVectorStart != vectorStart)
+        myMemcpy(vectorStart, newVectorStart, vectorSize * vectorType);
     return 0;
 }
 
 void VectorReserve(uint8_t id, int size2Reserve) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int newVectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity) + size2Reserve;
     if (VectorResize(vectorPlace, newVectorCapacity)) {
-        cout<<"An error occurred while resizing vector!\n";
+        cout << "An error occurred while resizing vector!\n";
         return;
     }
 }
@@ -550,137 +561,141 @@ void VectorReserve(uint8_t id, int size2Reserve) {
 void VectorShrink2Fit(uint8_t id) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int newVectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::size);
     if (VectorResize(vectorPlace, newVectorCapacity)) {
-        cout<<"An error occurred while resizing vector!\n";
+        cout << "An error occurred while resizing vector!\n";
         return;
     }
 }
 
 void VectorCopy(uint8_t idSrc, uint8_t idDst) {
-    uint8_t vectorSrcPlace = GetVectorPlace(idSrc), vectorDstPlace = GetVectorPlace(idDst);
+    uint8_t vectorSrcPlace = GetVectorPlace(idSrc),
+            vectorDstPlace = GetVectorPlace(idDst);
     if (vectorSrcPlace == ENOVARIABLE) {
-        cout<<"Source variable doesn't exist!\n";
+        cout << "Source variable doesn't exist!\n";
         return;
     }
     if (vectorDstPlace == ENOVARIABLE) {
-        cout<<"Destination variable doesn't exist!\n";
+        cout << "Destination variable doesn't exist!\n";
         return;
     }
 
     int vectorSrcType = GetMetadataValue(vectorSrcPlace, VariablePropery::type);
-    if (vectorSrcType != GetMetadataValue(vectorDstPlace, VariablePropery::type))  {
-        cout<<"Variable types not equal!\n";
+    if (vectorSrcType != GetMetadataValue(vectorDstPlace, VariablePropery::type)) {
+        cout << "Variable types not equal!\n";
         return;
     }
 
     int vectorSrcCapacity = GetMetadataValue(vectorSrcPlace, VariablePropery::capacity);
-    int newVectorDstStart = myMalloc(vectorSrcCapacity*vectorSrcType, vectorDstPlace);
+    int newVectorDstStart = myMalloc(vectorSrcCapacity * vectorSrcType, vectorDstPlace);
     if (newVectorDstStart == -EINVALID) {
         cout << "No more memory available!\n";
         return;
     }
-    printf("malloc succeded! new start index: %d new capacity: %d\n", newVectorDstStart, vectorSrcCapacity);
+    printf("DEBUG: malloc succeded! new start index: %d new capacity: %d\n", newVectorDstStart, vectorSrcCapacity);
     SetMetadataValue(vectorDstPlace, VariablePropery::capacity, vectorSrcCapacity);
     SetMetadataValue(vectorDstPlace, VariablePropery::startIndex, newVectorDstStart);
 
-    int vectorSrcSize = GetMetadataValue(vectorSrcPlace, VariablePropery::size), vectorSrcStart = GetMetadataValue(vectorSrcPlace, VariablePropery::startIndex);
-    if(vectorSrcStart>-1)
-        myMemcpy(vectorSrcStart, newVectorDstStart, vectorSrcSize*vectorSrcType);
+    int vectorSrcSize = GetMetadataValue(vectorSrcPlace, VariablePropery::size),
+        vectorSrcStart = GetMetadataValue(vectorSrcPlace, VariablePropery::startIndex);
+    if (vectorSrcStart > NOSTARTINDX)
+        myMemcpy(vectorSrcStart, newVectorDstStart, vectorSrcSize * vectorSrcType);
     SetMetadataValue(vectorDstPlace, VariablePropery::size, GetMetadataValue(vectorSrcPlace, VariablePropery::size));
 }
 
 void VectorArbitraryPushBack(uint8_t id, int index, int value) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
-    vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
-    if (index<0 || index>vectorSize) {
-        cout<<"Invalid push index!\n";
+        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
+    if (index < 0 || index > vectorSize) {
+        cout << "Invalid push index!\n";
         return;
     }
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
-        // Not using VectorResize here to prevent useless copying two times. The code will be cleaner if I used that function though.
-        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(int), vectorPlace), vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+        printf("DEBUG: No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        // Not using VectorResize here to prevent useless copying two times. The code would be cleaner if I used that function though.
+        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(int), vectorPlace),
+            vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
         if (newVectorStart == -EINVALID) {
             cout << "No more memory available!\n";
             return;
         }
-        printf("malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, (int)(vectorCapacity * 1.5 + 1));
+        printf("DEBUG: malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, (int)(vectorCapacity * 1.5 + 1));
         SetMetadataValue(vectorPlace, VariablePropery::capacity, (int)(vectorCapacity * 1.5 + 1));
         SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
 
-        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-        myMemcpy(vectorStart, newVectorStart, (index)*sizeof(int));
+        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
+        myMemcpy(vectorStart, newVectorStart, (index) * sizeof(int));
         SetMultiValue(value, newVectorStart, index);
-        myMemcpy(vectorStart+(index*sizeof(int)), newVectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int));
+        myMemcpy(vectorStart + (index * sizeof(int)), newVectorStart + ((index + 1) * sizeof(int)), (vectorSize - index) * sizeof(int));
         return;
     }
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(int)), vectorStart+((index+1)*sizeof(int)), (vectorSize-index)*sizeof(int));
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
+    myMemcpy(vectorStart + (index * sizeof(int)), vectorStart + ((index + 1) * sizeof(int)), (vectorSize - index) * sizeof(int));
     SetMultiValue(value, vectorStart, index);
 }
 void VectorArbitraryPushBack(uint8_t id, int index, double value) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size),
-    vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
-    if (index<0 || index>vectorSize) {
-        cout<<"Invalid push index!\n";
+        vectorCapacity = GetMetadataValue(vectorPlace, VariablePropery::capacity);
+    if (index < 0 || index > vectorSize) {
+        cout << "Invalid push index!\n";
         return;
     }
 
     if (vectorSize >= vectorCapacity) {
-        printf("No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
-        // Not using VectorResize here to prevent useless copying two times. The code will be cleaner if I used that function though.
-        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(double), vectorPlace), vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
+        printf("DEBUG: No more capacity available! capacity: %d size: %d Trying to malloc...\n", vectorCapacity, vectorSize);
+        // Not using VectorResize here to prevent useless copying two times. The code would be cleaner if I used that function though.
+        int newVectorStart = myMalloc((vectorCapacity * 1.5 + 1) * sizeof(double), vectorPlace),
+            vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
         if (newVectorStart == -EINVALID) {
             cout << "No more memory available!\n";
             return;
         }
-        printf("malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, (int)(vectorCapacity * 1.5 + 1));
+        printf("DEBUG: malloc succeded! new start index: %d new capacity: %d\n", newVectorStart, (int)(vectorCapacity * 1.5 + 1));
         SetMetadataValue(vectorPlace, VariablePropery::capacity, (int)(vectorCapacity * 1.5 + 1));
         SetMetadataValue(vectorPlace, VariablePropery::startIndex, newVectorStart);
 
-        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-        myMemcpy(vectorStart, newVectorStart, (index)*sizeof(double));
+        SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
+        myMemcpy(vectorStart, newVectorStart, (index) * sizeof(double));
         SetMultiValue(value, newVectorStart, index);
-        myMemcpy(vectorStart+(index*sizeof(double)), newVectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double));
+        myMemcpy(vectorStart + (index * sizeof(double)), newVectorStart + ((index + 1) * sizeof(double)), (vectorSize - index) * sizeof(double));
         return;
     }
 
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex);
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize+1);
-    myMemcpy(vectorStart+(index*sizeof(double)), vectorStart+((index+1)*sizeof(double)), (vectorSize-index)*sizeof(double));
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize + 1);
+    myMemcpy(vectorStart + (index * sizeof(double)), vectorStart + ((index + 1) * sizeof(double)), (vectorSize - index) * sizeof(double));
     SetMultiValue(value, vectorStart, index);
 }
 
 void VectorEraseRange(uint8_t id, int fromIndex, int toIndex) {
     uint8_t vectorPlace = GetVectorPlace(id);
     if (vectorPlace == ENOVARIABLE) {
-        cout<<"Variable doesn't exist!\n";
+        cout << "Variable doesn't exist!\n";
         return;
     }
     int vectorSize = GetMetadataValue(vectorPlace, VariablePropery::size);
-    if (fromIndex<0 || toIndex<0 || fromIndex>=vectorSize || toIndex>=vectorSize) {
-        cout<<"Invalid erase index!\n";
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= vectorSize || toIndex >= vectorSize) {
+        cout << "Invalid erase index!\n";
         return;
     }
     int vectorStart = GetMetadataValue(vectorPlace, VariablePropery::startIndex),
         vectorType = GetMetadataValue(vectorPlace, VariablePropery::type);
-    myMemcpy(vectorStart+(toIndex+1)*vectorType, vectorStart+(fromIndex*vectorType), (vectorSize-toIndex-1)*vectorType);
-    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize-(toIndex-fromIndex+1));
+    myMemcpy(vectorStart + (toIndex + 1) * vectorType, vectorStart + (fromIndex * vectorType), (vectorSize - toIndex - 1) * vectorType);
+    SetMetadataValue(vectorPlace, VariablePropery::size, vectorSize - (toIndex - fromIndex + 1));
 }
