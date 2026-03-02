@@ -18,8 +18,8 @@ using namespace std;
 #endif
 
 // Constant values!
-const int HEAP_SIZE = 1000;
-// const int HEAP_SIZE = 1000000;
+// const int HEAP_SIZE = 1000;
+const int HEAP_SIZE = 1000000;
 const int VAR_METADATA_SIZE = 14;
 // Static in the sense that it is always there even when no variables
 // exist. Currently only varcount is static
@@ -95,17 +95,11 @@ int main() {
     int initValuesVector2[10]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     uint8_t intVector2 = VectorDefine(Type::Int, initValuesVector2, 10);
 
-    // VectorCopy(intVector, intVector2);
-
     cout << VectorIntAt(intVector2, 0) << "\n";
     cout << VectorIntAt(intVector2, 1) << "\n";
     cout << VectorIntAt(intVector2, 2) << "\n";
 
     VectorDelete(intVector2);
-
-    // VectorDelete(intVector);
-    // VectorReserve(doubleVector, 10);
-    // VectorReserve(intVector, 10);
 
     VectorPushBack(intVector, 12);
     VectorPushBack(doubleVector, 1.1);
@@ -159,10 +153,9 @@ int main() {
     cout << VectorIntAt(intVector2, 1) << "\n";
     cout << VectorIntAt(intVector2, 2) << "\n";
 
-    // for(int i=0; i<255; i++) {
-    //     // cout<<i<<endl;
-    //     cout<<(int)VectorDefine(Type::Int)<<"\n";
-    // }
+    for(int i=0; i<255; i++) {
+        cout<<(int)VectorDefine(Type::Int)<<"\n";
+    }
     return 0;
 }
 
