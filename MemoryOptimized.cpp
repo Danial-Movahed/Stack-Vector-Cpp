@@ -7,8 +7,8 @@ using namespace std;
 // Options!
 // Use c++ builtin casting using pointer cast and derefrencing
 // Use pointer arithmetic instead of manually using *sizeof(type) to automatically use correct index
-// #define USE_POINTER_CAST_GETTER
-// #define USE_POINTER_CAST_SETTER
+#define USE_POINTER_CAST_GETTER
+#define USE_POINTER_CAST_SETTER
 
 #if !defined(USE_POINTER_CAST_GETTER) && !defined(USE_POINTER_CAST_SETTER)
     // Use memcpy to prevent undefined behaviour: strict aliasing and misalignment
@@ -24,7 +24,7 @@ using namespace std;
 #define VECTOR_COUNT_ADDR HEAP_SIZE - 1
 #define EINVALID 2 // 2 because -1 is reserved for start index of empty vectors in myMalloc
 #define ENOVARIABLE 255
-#define MAX_VAR_CNT 255 // 0-254 which counts to 255 because number 255 is reserved for no variable error
+#define MAX_VAR_CNT 255 // 0-254 because number 255 is reserved for no variable error, which counts to 255 
 
 uint8_t heap[HEAP_SIZE];
 
